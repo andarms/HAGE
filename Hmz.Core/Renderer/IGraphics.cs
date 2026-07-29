@@ -1,7 +1,8 @@
-using System.Drawing;
 using System.Numerics;
-using Hmz.Core.Graphics._3D;
+using Hmz.Core.Renderer;
 using Hmz.Core.Renderer._2D;
+using Hmz.Core.Renderer._3D;
+
 namespace Hmz.Core;
 
 public record Stroke { public Color Color { get; init; } = Color.Black; public float Width { get; init; } = 1f; }
@@ -35,6 +36,7 @@ public interface IGraphics
   void DrawLines(Vector2[] points, Stroke style);
   void DrawCircle(float centerX, float centerY, float radius, CircleStyle style);
   void DrawCircle(Vector2 center, float radius, CircleStyle style);
+  void DrawTexture(Texture2D texture, float x, float y, float width, float height);
   #endregion
 
   #region 3D Drawing
@@ -43,6 +45,6 @@ public interface IGraphics
 
 
   void DrawCube(Cube cube, CubeStyle style);
-  void DrawModel(Model model, Matrix4x4 transform);
+  void DrawModel(Model model);
   #endregion
 }

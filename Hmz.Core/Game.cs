@@ -2,10 +2,12 @@ using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
-using Silk.NET.Core;
-using Hmz.Core.Graphics;
-using Hmz.Core.Graphics._3D;
+
 using System.Numerics;
+using Hmz.Core.Renderer._3D;
+using Hmz.Core.Renderer;
+using Hmz.Core.Content;
+using Hmz.Core.Renderer._2D;
 
 namespace Hmz.Core;
 
@@ -20,13 +22,16 @@ public class Game
 {
   readonly IWindow window;
   IInputContext input;
-  private GraphicsRenderer renderer;
+  private Renderer.Graphics renderer;
   private int width;
   private int height;
 
   readonly Camera3D camera;
   readonly Cube cube;
 
+  readonly ContentManager content = new ContentManager();
+  Texture2D texture;
+  Model treeModel;
 
   public Game(GameOptions? options = null)
   {
@@ -80,9 +85,13 @@ public class Game
     }
 
     Engine.GL = GL.GetApi(window);
-    renderer = new GraphicsRenderer(width, height);
+    renderer = new Renderer.Graphics(width, height);
 
     window.FramebufferResize += ResizeViewport;
+
+    texture = content.LoadTexture("textures/tiny_dungeon.png");
+    treeModel = content.LoadModel("models/tree_1.gltf");
+    treeModel.Transform.Position = new Vector3(2f, 0f, 2f);
   }
 
   void ResizeViewport(Vector2D<int> size)
@@ -100,16 +109,15 @@ public class Game
 
   private void Render(double delta)
   {
-    renderer.BeginFrame(Color.CornflowerBlue);
-    renderer.DrawRectangle(100, 100, 200, 150, Color.Red);
-    renderer.DrawRectangle(350, 250, 120, 300, Color.Blue);
-    renderer.End();
+    renderer.Clear(Color.CornflowerBlue);
+    renderer.StartFrame();
 
-    renderer.BeginFrame(camera);
-    renderer.DrawCube(cube, Color.Red);
-    renderer.DrawCubeWires(cube, Color.Green);
+    renderer.StartMode3D(camera);
+    renderer.DrawModel(treeModel);
+    renderer.DrawCube(cube, new CubeStyle { Color = Color.Red, Wireframe = true });
+    renderer.EndMode3D();
+
     renderer.EndFrame();
-
 
     var err = Engine.GL.GetError();
     if (err != GLEnum.NoError)
@@ -126,6 +134,7 @@ public class Game
 
   private void OnClose()
   {
+    treeModel.Dispose();
     renderer.Dispose();
   }
 

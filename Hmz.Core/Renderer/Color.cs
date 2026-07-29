@@ -1,4 +1,4 @@
-namespace Hmz.Core.Graphics;
+namespace Hmz.Core.Renderer;
 
 public class Color(byte r, byte g, byte b, byte a = 255)
 {

@@ -1,6 +1,7 @@
+using System.Numerics;
+
 namespace Hmz.Core.Renderer._2D;
 
-using System.Numerics;
 public class Camera2D
 {
   public Vector2 Position { get; set; } = Vector2.Zero;

@@ -1,4 +1,4 @@
-namespace Hmz.Core.Graphics._3D;
+namespace Hmz.Core.Renderer._3D;
 
 using System.Numerics;
 
