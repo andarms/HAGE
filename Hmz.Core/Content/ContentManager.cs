@@ -1,3 +1,5 @@
+using FontStashSharp;
+using Hmz.Core.Renderer;
 using Hmz.Core.Renderer._2D;
 using Hmz.Core.Renderer._3D;
 using Silk.NET.Assimp;
@@ -15,6 +17,22 @@ public sealed class ContentManager
   public string ContentRoot { get; init; } = "assets/";
   public string Resolve(string path) => Path.Combine(AppContext.BaseDirectory, ContentRoot, path);
   private readonly Dictionary<string, object> cache = [];
+
+  public Font DefaultFont { get; } = LoadEmbeddedFont();
+
+  public Font LoadFont(string path)
+  {
+    FontSystem system = new();
+    system.AddFont(System.IO.File.ReadAllBytes(Resolve(path)));
+    return new Font(system);
+  }
+
+  static Font LoadEmbeddedFont()
+  {
+    FontSystem system = new();
+    system.AddFont(EmbeddedResources.ReadBytes("Hmz.Core.Resources.Fonts.monogram-extended.ttf"));
+    return new Font(system);
+  }
 
   // Decode the image on the CPU, upload it to OpenGL, and expose only the engine texture type.
   public Texture2D LoadTexture(string path) => UploadTexture(System.IO.File.ReadAllBytes(Resolve(path)));
@@ -188,7 +206,7 @@ public sealed class ContentManager
     return UploadTexture(System.IO.File.ReadAllBytes(Path.Combine(modelDir, texturePath)));
   }
 
-  public Shader LoadShader(string path)
+  public Hmz.Core.Renderer.Shader LoadShader(string path)
   {
     throw new NotImplementedException("Shader loading is not implemented yet.");
   }

@@ -16,6 +16,7 @@ public record GameOptions
   public int Width { get; init; } = 800;
   public int Height { get; init; } = 600;
   public string Title { get; init; } = "Hamaze";
+  public int TargetFps { get; init; } = 60;
 }
 
 public class Game
@@ -42,6 +43,7 @@ public class Game
     WindowOptions windowOptions = WindowOptions.Default;
     windowOptions.Size = new Vector2D<int>(options.Width, options.Height);
     windowOptions.Title = options.Title;
+    windowOptions.FramesPerSecond = options.TargetFps;
     windowOptions.API = new GraphicsAPI(
       ContextAPI.OpenGL,
       ContextProfile.Core,
@@ -104,11 +106,17 @@ public class Game
 
   private void Update(double delta)
   {
+    GameTime.DeltaTime = (float)delta;
+    GameTime.TotalTime += (float)delta;
+
     camera.Orbit(Vector3.Zero, 0.5f * (float)delta, 0);
   }
 
   private void Render(double delta)
   {
+    Performance.FrameTimeMs = (float)(delta * 1000.0);
+    Performance.FPS = delta > 0 ? (int)Math.Round(1.0 / delta) : 0;
+
     renderer.Clear(Color.CornflowerBlue);
     renderer.StartFrame();
 
@@ -116,6 +124,13 @@ public class Game
     renderer.DrawModel(treeModel);
     renderer.DrawCube(cube, new CubeStyle { Color = Color.Red, Wireframe = true });
     renderer.EndMode3D();
+
+    renderer.DrawText($"FPS: {Performance.FPS}", 10, 10, new TextStyle
+    {
+      Color = Color.White,
+      FontSize = 24f,
+      Outline = new Stroke { Color = Color.Black, Width = 2f },
+    });
 
     renderer.EndFrame();
 

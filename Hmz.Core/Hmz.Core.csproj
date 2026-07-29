@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="FontStashSharp.PlatformAgnostic" Version="1.5.6" />
     <PackageReference Include="Silk.NET.Assimp" Version="2.23.0" />
     <PackageReference Include="Silk.NET.Direct2D" Version="2.23.0" />
     <PackageReference Include="Silk.NET.Direct3D.Compilers" Version="2.23.0" />
@@ -40,6 +41,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Resources\Shaders\default.vert" />
     <EmbeddedResource Include="Resources\Shaders\default.frag" />
+    <EmbeddedResource Include="Resources\Fonts\monogram-extended.ttf" />
   </ItemGroup>
 
 </Project>

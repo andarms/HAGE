@@ -1,8 +1,7 @@
 using Silk.NET.OpenGL;
 using System.Numerics;
-using Hmz.Core.Renderer;
 
-namespace Hmz.Core;
+namespace Hmz.Core.Renderer;
 
 public sealed class Shader : IDisposable
 {
@@ -36,7 +35,10 @@ public sealed class Shader : IDisposable
     return s;
   }
 
-  public void Use() => Engine.GL.UseProgram(Handle);
+  public void Use()
+  {
+    Engine.GL.UseProgram(Handle);
+  }
 
   public unsafe void SetMatrix(string name, Matrix4x4 m)
   {
@@ -50,10 +52,18 @@ public sealed class Shader : IDisposable
     Engine.GL.Uniform4(Engine.GL.GetUniformLocation(Handle, name), color);
   }
 
-  public void SetInt(string name, int value) =>
+  public void SetInt(string name, int value)
+  {
     Engine.GL.Uniform1(Engine.GL.GetUniformLocation(Handle, name), value);
+  }
 
-  public void SetBool(string name, bool value) => SetInt(name, value ? 1 : 0);
+  public void SetBool(string name, bool value)
+  {
+    SetInt(name, value ? 1 : 0);
+  }
 
-  public void Dispose() => Engine.GL.DeleteProgram(Handle);
+  public void Dispose()
+  {
+    Engine.GL.DeleteProgram(Handle);
+  }
 }

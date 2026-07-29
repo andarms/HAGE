@@ -17,6 +17,14 @@ public record CubeStyle
 }
 
 
+public record TextStyle
+{
+  public Color Color { get; init; } = Color.White;
+  public float FontSize { get; init; } = 12f;
+  public Font? Font { get; init; }
+  public Stroke? Outline { get; init; }
+}
+
 public interface IGraphics
 {
   void Clear(Color color);
@@ -46,5 +54,9 @@ public interface IGraphics
 
   void DrawCube(Cube cube, CubeStyle style);
   void DrawModel(Model model);
+  #endregion
+
+  #region Text Drawing
+  void DrawText(string text, float x, float y, TextStyle style);
   #endregion
 }
