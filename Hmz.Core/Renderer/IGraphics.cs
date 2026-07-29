@@ -1,35 +1,15 @@
 using System.Numerics;
-using Hmz.Core.Renderer;
 using Hmz.Core.Renderer._2D;
 using Hmz.Core.Renderer._3D;
 
-namespace Hmz.Core;
+namespace Hmz.Core.Renderer;
 
-public record Stroke { public Color Color { get; init; } = Color.Black; public float Width { get; init; } = 1f; }
-public record RectangleStyle { public Color? Fill { get; init; } = Color.White; public Stroke? Border { get; init; } public float CornerRadius { get; init; } }
-public record CircleStyle { public Color? Fill { get; init; } = Color.White; public Stroke? Border { get; init; } }
-public record CubeStyle
-{
-  public Color Color { get; init; } = Color.White;
-  public float Width { get; init; } = 1f;
-  public bool Wireframe { get; init; } = false;
-  public Stroke? Border { get; init; } = new Stroke { Color = Color.Black, Width = 1f };
-}
-
-
-public record TextStyle
-{
-  public Color Color { get; init; } = Color.White;
-  public float FontSize { get; init; } = 12f;
-  public Font? Font { get; init; }
-  public Stroke? Outline { get; init; }
-}
-
-public interface IGraphics
+public interface IGraphics : IDisposable
 {
   void Clear(Color color);
   void StartFrame();
   void EndFrame();
+  void Resize(int width, int height);
 
   #region 2D Drawing
 

@@ -6,6 +6,7 @@ using Silk.NET.Windowing;
 using System.Numerics;
 using Hmz.Core.Renderer._3D;
 using Hmz.Core.Renderer;
+using Hmz.Core.Renderer.OpenGL;
 using Hmz.Core.Content;
 using Hmz.Core.Renderer._2D;
 
@@ -23,7 +24,7 @@ public class Game
 {
   readonly IWindow window;
   IInputContext input;
-  private Renderer.Graphics renderer;
+  public IGraphics Graphics;
   private int width;
   private int height;
 
@@ -87,7 +88,7 @@ public class Game
     }
 
     Engine.GL = GL.GetApi(window);
-    renderer = new Renderer.Graphics(width, height);
+    Graphics = new OpenGLGraphics(width, height);
 
     window.FramebufferResize += ResizeViewport;
 
@@ -101,7 +102,7 @@ public class Game
     width = size.X;
     height = size.Y;
     Engine.GL.Viewport(0, 0, (uint)size.X, (uint)size.Y);
-    renderer.Resize(size.X, size.Y);
+    Graphics.Resize(size.X, size.Y);
   }
 
   private void Update(double delta)
@@ -117,22 +118,22 @@ public class Game
     Performance.FrameTimeMs = (float)(delta * 1000.0);
     Performance.FPS = delta > 0 ? (int)Math.Round(1.0 / delta) : 0;
 
-    renderer.Clear(Color.CornflowerBlue);
-    renderer.StartFrame();
+    Graphics.Clear(Color.CornflowerBlue);
+    Graphics.StartFrame();
 
-    renderer.StartMode3D(camera);
-    renderer.DrawModel(treeModel);
-    renderer.DrawCube(cube, new CubeStyle { Color = Color.Red, Wireframe = true });
-    renderer.EndMode3D();
+    Graphics.StartMode3D(camera);
+    Graphics.DrawModel(treeModel);
+    Graphics.DrawCube(cube, new CubeStyle { Color = Color.Red, Wireframe = true });
+    Graphics.EndMode3D();
 
-    renderer.DrawText($"FPS: {Performance.FPS}", 10, 10, new TextStyle
+    Graphics.DrawText($"FPS: {Performance.FPS}", 10, 10, new TextStyle
     {
       Color = Color.White,
       FontSize = 24f,
       Outline = new Stroke { Color = Color.Black, Width = 2f },
     });
 
-    renderer.EndFrame();
+    Graphics.EndFrame();
 
     var err = Engine.GL.GetError();
     if (err != GLEnum.NoError)
@@ -144,13 +145,13 @@ public class Game
   private void OnFramebufferResize(Vector2D<int> newSize)
   {
     Engine.GL.Viewport(newSize);
-    renderer.Resize(newSize.X, newSize.Y);
+    Graphics.Resize(newSize.X, newSize.Y);
   }
 
   private void OnClose()
   {
     treeModel.Dispose();
-    renderer.Dispose();
+    Graphics.Dispose();
   }
 
   private void KeyDown(IKeyboard keyboard, Key key, int scancode)
