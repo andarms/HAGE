@@ -46,6 +46,16 @@ public sealed class Shader : IDisposable
     Engine.GL.UniformMatrix4(loc, 1, false, (float*)&m);
   }
 
+  public unsafe void SetMatrixArray(string name, ReadOnlySpan<Matrix4x4> matrices)
+  {
+    if (matrices.Length == 0) return;
+    int loc = Engine.GL.GetUniformLocation(Handle, name);
+    fixed (Matrix4x4* ptr = matrices)
+    {
+      Engine.GL.UniformMatrix4(loc, (uint)matrices.Length, false, (float*)ptr);
+    }
+  }
+
   public void SetColor(string name, Color c)
   {
     Vector4 color = new(c.R / 255f, c.G / 255f, c.B / 255f, c.A / 255f);

@@ -93,8 +93,9 @@ public class Game
     window.FramebufferResize += ResizeViewport;
 
     texture = content.LoadTexture("textures/tiny_dungeon.png");
-    treeModel = content.LoadModel("models/tree_1.gltf");
+    treeModel = content.LoadModel("models/player.gltf");
     treeModel.Transform.Position = new Vector3(2f, 0f, 2f);
+    treeModel.Play("walk");
   }
 
   void ResizeViewport(Vector2D<int> size)
@@ -111,6 +112,7 @@ public class Game
     GameTime.TotalTime += (float)delta;
 
     camera.Orbit(Vector3.Zero, 0.5f * (float)delta, 0);
+    treeModel.Update((float)delta);
   }
 
   private void Render(double delta)

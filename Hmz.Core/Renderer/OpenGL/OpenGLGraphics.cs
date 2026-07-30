@@ -271,6 +271,13 @@ public sealed class OpenGLGraphics : IGraphics
       shader.SetMatrix("uModel", mesh.NodeTransform * transform);
       shader.SetColor("uColor", Color.White);
 
+      bool skinned = mesh.IsSkinned && model.BoneMatrices.Length > 0;
+      shader.SetBool("uSkinned", skinned);
+      if (skinned)
+      {
+        shader.SetMatrixArray("uBones", model.BoneMatrices);
+      }
+
       if (mesh.Texture != null)
       {
         Engine.GL.ActiveTexture(TextureUnit.Texture0);
@@ -285,6 +292,10 @@ public sealed class OpenGLGraphics : IGraphics
       }
 
       shader.SetBool("uTextured", false);
+      if (skinned)
+      {
+        shader.SetBool("uSkinned", false);
+      }
     }
   }
 
