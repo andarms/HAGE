@@ -1,6 +1,7 @@
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
+using Silk.NET.OpenGL.Extensions.ImGui;
 using Silk.NET.Windowing;
 
 using System.Numerics;
@@ -9,6 +10,7 @@ using Hmz.Core.Renderer;
 using Hmz.Core.Renderer.OpenGL;
 using Hmz.Core.Content;
 using Hmz.Core.Renderer._2D;
+using ImGuiNET;
 
 namespace Hmz.Core;
 
@@ -24,6 +26,7 @@ public class Game
 {
   readonly IWindow window;
   IInputContext input;
+  ImGuiController imGuiController;
   public IGraphics Graphics;
   private int width;
   private int height;
@@ -90,6 +93,9 @@ public class Game
     Engine.GL = GL.GetApi(window);
     Graphics = new OpenGLGraphics(width, height);
 
+    imGuiController = new ImGuiController(Engine.GL, window, input);
+    ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.DockingEnable;
+
     window.FramebufferResize += ResizeViewport;
 
     texture = content.LoadTexture("textures/tiny_dungeon.png");
@@ -120,6 +126,10 @@ public class Game
     Performance.FrameTimeMs = (float)(delta * 1000.0);
     Performance.FPS = delta > 0 ? (int)Math.Round(1.0 / delta) : 0;
 
+    imGuiController.Update((float)delta);
+    ImGui.DockSpaceOverViewport(0, ImGui.GetMainViewport(), ImGuiDockNodeFlags.PassthruCentralNode);
+
+
     Graphics.Clear(Color.CornflowerBlue);
     Graphics.StartFrame();
 
@@ -136,6 +146,8 @@ public class Game
     });
 
     Graphics.EndFrame();
+
+    imGuiController.Render();
 
     var err = Engine.GL.GetError();
     if (err != GLEnum.NoError)
@@ -154,6 +166,7 @@ public class Game
   {
     treeModel.Dispose();
     Graphics.Dispose();
+    imGuiController.Dispose();
   }
 
   private void KeyDown(IKeyboard keyboard, Key key, int scancode)
