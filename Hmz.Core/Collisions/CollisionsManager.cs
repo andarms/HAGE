@@ -89,7 +89,7 @@ public class CollisionsManager
       if (ReferenceEquals(other, source) || !other.IsActive) continue;
 
       var otherCollider = other.Collider;
-      if (otherCollider?.IsActive != true || !otherCollider.IsSolid) continue;
+      if (otherCollider?.IsActive != true || otherCollider.Type != CollisionType.Solid) continue;
       if (!CanPair(sourceCollider, otherCollider)) continue;
 
       var otherBounds = otherCollider.Bounds(other.Transform.Position);

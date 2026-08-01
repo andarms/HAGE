@@ -79,8 +79,9 @@ public class GameObject
 
     if (Collider != null)
     {
+      Color color = Collider.Type == CollisionType.Solid ? Color.Red : Color.Yellow;
       var cube = Collider.Bounds(GlobalPosition).ToCube();
-      Engine.Graphics.DrawCube(cube, new CubeStyle { Wireframe = true, Color = Color.Green });
+      Engine.Graphics.DrawCube(cube, new CubeStyle { Wireframe = true, Color = color });
     }
     foreach (GameObject child in Children)
     {

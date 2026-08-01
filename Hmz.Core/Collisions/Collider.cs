@@ -18,7 +18,7 @@ public class Collider(GameObject owner)
 
   public bool IsActive { get; set; } = true;
 
-  public bool IsSolid { get; set; } = true;
+  public CollisionType Type { get; set; } = CollisionType.Solid;
 
   public CollisionLayer Layer { get; set; } = CollisionLayer.All;
 

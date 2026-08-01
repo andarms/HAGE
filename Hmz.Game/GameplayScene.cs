@@ -27,6 +27,8 @@ public sealed class GameplayScene : Scene
     Instances.Add(player);
     Tree tree = new();
     Instances.Add(tree);
+    Trigger trigger = new();
+    Instances.Add(trigger);
   }
 
   public override void Update(float dt)
