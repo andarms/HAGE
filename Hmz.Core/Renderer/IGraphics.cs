@@ -36,6 +36,8 @@ public interface IGraphics : IDisposable
 
   void DrawCube(Cube cube, CubeStyle style);
   void DrawModel(Model model, Matrix4x4 worldMatrix, Matrix4x4[] boneMatrices);
+  void DrawDebugGrid(int xRows, int zColumns, float cellSize);
+  void DrawSphere(Sphere sphere, SphereStyle style);
   #endregion
 
   #region Text Drawing

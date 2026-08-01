@@ -1,3 +1,4 @@
+using Hmz.Core._3D.Geometry;
 using Hmz.Core.Collisions;
 using Hmz.Core.Renderer;
 using Hmz.Core.Renderer.Styles;
@@ -74,6 +75,8 @@ public class GameObject
 
   public virtual void Debug()
   {
+    Engine.Graphics.DrawSphere(new Sphere(GlobalPosition, 0.1f), new SphereStyle { Wireframe = true, Color = Color.Red });
+
     if (Collider != null)
     {
       var cube = Collider.Bounds(GlobalPosition).ToCube();

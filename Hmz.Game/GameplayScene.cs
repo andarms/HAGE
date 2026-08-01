@@ -57,6 +57,7 @@ public sealed class GameplayScene : Scene
   {
     Engine.Graphics.StartMode3D(camera);
     base.Draw();
+    Engine.Graphics.DrawDebugGrid(40, 40, 1f);
     Engine.Graphics.EndMode3D();
 
     Engine.Graphics.DrawText($"FPS: {Performance.FPS}", 10f, 10f, new TextStyle

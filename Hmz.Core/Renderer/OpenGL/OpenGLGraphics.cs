@@ -13,6 +13,7 @@ public sealed class OpenGLGraphics : IGraphics
   readonly Shader shader;
   readonly uint vao, vbo;
   readonly uint cubeVao, cubeVbo, cubeEbo;
+  readonly uint sphereVao, sphereVbo, sphereTriangleEbo, sphereLineEbo;
   readonly uint dynamicVao, dynamicVbo;
   readonly FontRenderer fontRenderer;
 
@@ -62,11 +63,24 @@ public sealed class OpenGLGraphics : IGraphics
     Engine.GL.BindBuffer(BufferTargetARB.ElementArrayBuffer, cubeEbo);
     Engine.GL.BufferData(BufferTargetARB.ElementArrayBuffer, new Cube().GetIndices(), BufferUsageARB.StaticDraw);
 
-    unsafe
-    {
-      Engine.GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), (void*)0);
-    }
-    Engine.GL.EnableVertexAttribArray(0);
+    ConfigurePositionOnlyLayout();
+
+    sphereVao = Engine.GL.GenVertexArray();
+    Engine.GL.BindVertexArray(sphereVao);
+
+    sphereVbo = Engine.GL.GenBuffer();
+    Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, sphereVbo);
+    Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, new Sphere().GetVertices(), BufferUsageARB.StaticDraw);
+
+    sphereTriangleEbo = Engine.GL.GenBuffer();
+    Engine.GL.BindBuffer(BufferTargetARB.ElementArrayBuffer, sphereTriangleEbo);
+    Engine.GL.BufferData(BufferTargetARB.ElementArrayBuffer, new Sphere().GetTriangleIndices(), BufferUsageARB.StaticDraw);
+
+    sphereLineEbo = Engine.GL.GenBuffer();
+    Engine.GL.BindBuffer(BufferTargetARB.ElementArrayBuffer, sphereLineEbo);
+    Engine.GL.BufferData(BufferTargetARB.ElementArrayBuffer, new Sphere().GetLineIndices(), BufferUsageARB.StaticDraw);
+
+    ConfigurePositionOnlyLayout();
 
     // Position-only, re-buffered per draw call — backs the procedural 2D shapes (rectangles, circles, lines).
     dynamicVao = Engine.GL.GenVertexArray();
@@ -75,13 +89,16 @@ public sealed class OpenGLGraphics : IGraphics
     dynamicVbo = Engine.GL.GenBuffer();
     Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, dynamicVbo);
 
-    unsafe
-    {
-      Engine.GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), (void*)0);
-    }
-    Engine.GL.EnableVertexAttribArray(0);
+    ConfigurePositionOnlyLayout();
 
     Resize(width, height);
+  }
+
+  // Binds a plain vec3-position layout to attribute 0, for the VAO currently bound.
+  static unsafe void ConfigurePositionOnlyLayout()
+  {
+    Engine.GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), (void*)0);
+    Engine.GL.EnableVertexAttribArray(0);
   }
 
   // origin top-left, y down
@@ -94,6 +111,10 @@ public sealed class OpenGLGraphics : IGraphics
     Engine.GL.DeleteVertexArray(cubeVao);
     Engine.GL.DeleteBuffer(cubeVbo);
     Engine.GL.DeleteBuffer(cubeEbo);
+    Engine.GL.DeleteVertexArray(sphereVao);
+    Engine.GL.DeleteBuffer(sphereVbo);
+    Engine.GL.DeleteBuffer(sphereTriangleEbo);
+    Engine.GL.DeleteBuffer(sphereLineEbo);
     Engine.GL.DeleteVertexArray(dynamicVao);
     Engine.GL.DeleteBuffer(dynamicVbo);
     fontRenderer.Dispose();
@@ -259,6 +280,80 @@ public sealed class OpenGLGraphics : IGraphics
       unsafe
       {
         Engine.GL.DrawElements(PrimitiveType.LineLoop, Cube.IndexCount, DrawElementsType.UnsignedInt, (void*)0);
+      }
+    }
+  }
+
+  public void DrawDebugGrid(int xRows, int zColumns, float cellSize)
+  {
+    float halfWidth = xRows * cellSize / 2f;
+    float halfDepth = zColumns * cellSize / 2f;
+
+    float[] vertices = new float[(xRows + 1 + zColumns + 1) * 2 * 3];
+    int offset = 0;
+
+    for (int i = 0; i <= xRows; i++)
+    {
+      float x = -halfWidth + i * cellSize;
+      offset = WriteVertex(vertices, offset, x, 0f, -halfDepth);
+      offset = WriteVertex(vertices, offset, x, 0f, halfDepth);
+    }
+
+    for (int j = 0; j <= zColumns; j++)
+    {
+      float z = -halfDepth + j * cellSize;
+      offset = WriteVertex(vertices, offset, -halfWidth, 0f, z);
+      offset = WriteVertex(vertices, offset, halfWidth, 0f, z);
+    }
+
+    Engine.GL.BindVertexArray(dynamicVao);
+    UploadDynamic(vertices);
+    shader.SetMatrix("uModel", Matrix4x4.Identity);
+    shader.SetColor("uColor", Color.Gray);
+    Engine.GL.LineWidth(1f);
+    Engine.GL.DrawArrays(PrimitiveType.Lines, 0, (uint)(vertices.Length / 3));
+  }
+
+  static int WriteVertex(float[] vertices, int offset, float x, float y, float z)
+  {
+    vertices[offset] = x;
+    vertices[offset + 1] = y;
+    vertices[offset + 2] = z;
+    return offset + 3;
+  }
+
+  public void DrawSphere(Sphere sphere, SphereStyle style)
+  {
+    Engine.GL.BindVertexArray(sphereVao);
+    shader.SetMatrix("uModel", sphere.GetRenderMatrix());
+
+    if (style.Wireframe)
+    {
+      Engine.GL.BindBuffer(BufferTargetARB.ElementArrayBuffer, sphereLineEbo);
+      shader.SetColor("uColor", style.Color);
+      Engine.GL.LineWidth(style.Width);
+      unsafe
+      {
+        Engine.GL.DrawElements(PrimitiveType.Lines, Sphere.LineIndexCount, DrawElementsType.UnsignedInt, (void*)0);
+      }
+      return;
+    }
+
+    Engine.GL.BindBuffer(BufferTargetARB.ElementArrayBuffer, sphereTriangleEbo);
+    shader.SetColor("uColor", style.Color);
+    unsafe
+    {
+      Engine.GL.DrawElements(PrimitiveType.Triangles, Sphere.TriangleIndexCount, DrawElementsType.UnsignedInt, (void*)0);
+    }
+
+    if (style.Border != null)
+    {
+      Engine.GL.BindBuffer(BufferTargetARB.ElementArrayBuffer, sphereLineEbo);
+      shader.SetColor("uColor", style.Border.Color);
+      Engine.GL.LineWidth(style.Border.Width);
+      unsafe
+      {
+        Engine.GL.DrawElements(PrimitiveType.Lines, Sphere.LineIndexCount, DrawElementsType.UnsignedInt, (void*)0);
       }
     }
   }
