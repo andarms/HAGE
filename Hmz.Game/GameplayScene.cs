@@ -1,7 +1,9 @@
 using System.Numerics;
 using Hmz.Core;
+using Hmz.Core._3D;
+using Hmz.Core.Hosting;
 using Hmz.Core.Renderer;
-using Hmz.Core.Renderer._3D;
+using Hmz.Core.Renderer.Styles;
 using Hmz.Core.Scenes;
 
 namespace Hmz.Game;

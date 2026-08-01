@@ -1,7 +1,7 @@
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 
-namespace Hmz.Core;
+namespace Hmz.Core.Hosting;
 
 sealed class WindowController
 {
@@ -25,6 +25,9 @@ sealed class WindowController
       ContextFlags.ForwardCompatible,
       new APIVersion(3, 3)
     );
+    // Hidden until GameHost has finished loading and rendered its first frame -
+    // otherwise the OS shows a blank/white window for however long that takes.
+    windowOptions.IsVisible = false;
 
     window = Silk.NET.Windowing.Window.Create(windowOptions);
   }

@@ -1,6 +1,6 @@
-using Hmz.Core.Renderer._2D;
+using Hmz.Core.Renderer;
 
-namespace Hmz.Core.Renderer;
+namespace Hmz.Core.Renderer.Styles;
 
 public record TextStyle
 {

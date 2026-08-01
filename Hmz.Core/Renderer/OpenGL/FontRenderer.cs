@@ -1,9 +1,9 @@
 using FontStashSharp;
 using FontStashSharp.Interfaces;
 using Hmz.Core.Content;
-using Hmz.Core.Renderer._2D;
 using Silk.NET.OpenGL;
 using System.Numerics;
+using TextStyle = Hmz.Core.Renderer.Styles.TextStyle;
 
 namespace Hmz.Core.Renderer.OpenGL;
 

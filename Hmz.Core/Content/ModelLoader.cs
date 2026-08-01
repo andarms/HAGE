@@ -1,12 +1,12 @@
-using Hmz.Core.Renderer._2D;
-using Hmz.Core.Renderer._3D;
+using Hmz.Core._3D.Geometry;
+using Hmz.Core.Renderer;
 using Silk.NET.Assimp;
 using Silk.NET.OpenGL;
 using System.Numerics;
 using AssimpMesh = Silk.NET.Assimp.Mesh;
 using AssimpTexture = Silk.NET.Assimp.Texture;
 using AssimpAnimation = Silk.NET.Assimp.Animation;
-using EngineMesh = Hmz.Core.Renderer._3D.Mesh;
+using EngineMesh = Hmz.Core._3D.Geometry.Mesh;
 
 namespace Hmz.Core.Content;
 

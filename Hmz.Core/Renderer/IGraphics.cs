@@ -1,6 +1,8 @@
 using System.Numerics;
-using Hmz.Core.Renderer._2D;
-using Hmz.Core.Renderer._3D;
+using Hmz.Core._2D;
+using Hmz.Core._3D;
+using Hmz.Core._3D.Geometry;
+using Hmz.Core.Renderer.Styles;
 
 namespace Hmz.Core.Renderer;
 

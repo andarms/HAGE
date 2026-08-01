@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Hmz.Core.Renderer._2D;
+namespace Hmz.Core._2D;
 
 public class Camera2D
 {

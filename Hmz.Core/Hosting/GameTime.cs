@@ -1,4 +1,4 @@
-namespace Hmz.Core;
+namespace Hmz.Core.Hosting;
 
 public static class GameTime
 {

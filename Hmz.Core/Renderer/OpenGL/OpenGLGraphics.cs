@@ -1,6 +1,8 @@
+﻿using Hmz.Core._2D;
+using Hmz.Core._3D;
+using Hmz.Core._3D.Geometry;
 using Hmz.Core.Content;
-using Hmz.Core.Renderer._2D;
-using Hmz.Core.Renderer._3D;
+using Hmz.Core.Renderer.Styles;
 using Silk.NET.OpenGL;
 using System.Numerics;
 
@@ -130,7 +132,7 @@ public sealed class OpenGLGraphics : IGraphics
   {
     float radius = Math.Clamp(style.CornerRadius, 0f, MathF.Min(width, height) / 2f);
     Vector2 center = new(x + width / 2f, y + height / 2f);
-    Vector2[] ring = Geometry.BuildRectangleRing(x, y, width, height, radius);
+    Vector2[] ring = ShapeGeometry.BuildRectangleRing(x, y, width, height, radius);
     DrawPolygon(center, ring, style.Fill, style.Border);
   }
 
@@ -145,7 +147,7 @@ public sealed class OpenGLGraphics : IGraphics
 
   public void DrawLines(Vector2[] points, Stroke style)
   {
-    UploadDynamic(Geometry.ToVertexData(points));
+    UploadDynamic(ShapeGeometry.ToVertexData(points));
     shader.SetMatrix("uModel", Matrix4x4.Identity);
     shader.SetColor("uColor", style.Color);
     Engine.GL.LineWidth(style.Width);
@@ -154,7 +156,7 @@ public sealed class OpenGLGraphics : IGraphics
 
   public void DrawCircle(float centerX, float centerY, float radius, CircleStyle style)
   {
-    Vector2[] ring = Geometry.BuildCircleRing(centerX, centerY, radius);
+    Vector2[] ring = ShapeGeometry.BuildCircleRing(centerX, centerY, radius);
     DrawPolygon(new Vector2(centerX, centerY), ring, style.Fill, style.Border);
   }
 
@@ -190,7 +192,7 @@ public sealed class OpenGLGraphics : IGraphics
 
     if (fill != null)
     {
-      UploadDynamic(Geometry.ToFanVertexData(center, ring));
+      UploadDynamic(ShapeGeometry.ToFanVertexData(center, ring));
       shader.SetMatrix("uModel", Matrix4x4.Identity);
       shader.SetColor("uColor", fill);
       Engine.GL.DrawArrays(PrimitiveType.TriangleFan, 0, (uint)(ring.Length + 2));
@@ -198,7 +200,7 @@ public sealed class OpenGLGraphics : IGraphics
 
     if (border != null)
     {
-      UploadDynamic(Geometry.ToVertexData(ring));
+      UploadDynamic(ShapeGeometry.ToVertexData(ring));
       shader.SetMatrix("uModel", Matrix4x4.Identity);
       shader.SetColor("uColor", border.Color);
       Engine.GL.LineWidth(border.Width);

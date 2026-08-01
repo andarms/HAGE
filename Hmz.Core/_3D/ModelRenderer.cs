@@ -1,7 +1,8 @@
-namespace Hmz.Core.Renderer._3D;
+namespace Hmz.Core._3D;
 
 using System.Numerics;
 using Hmz.Core;
+using Hmz.Core._3D.Geometry;
 using Hmz.Core.GOM;
 
 public class ModelRenderer(Model model) : Component

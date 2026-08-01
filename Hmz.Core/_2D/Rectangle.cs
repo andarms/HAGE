@@ -1,4 +1,4 @@
-namespace Hmz.Core.Renderer._2D;
+namespace Hmz.Core._2D;
 
 public class Rectangle(float x, float y, float width, float height)
 {

@@ -1,4 +1,4 @@
-namespace Hmz.Core.Renderer._2D;
+namespace Hmz.Core.Renderer;
 
 using FontStashSharp;
 

@@ -1,5 +1,5 @@
 using System.Runtime.InteropServices;
-using Hmz.Core;
+using Hmz.Core.Hosting;
 
 namespace Hmz.Windows;
 

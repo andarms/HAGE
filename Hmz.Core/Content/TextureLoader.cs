@@ -1,4 +1,4 @@
-using Hmz.Core.Renderer._2D;
+using Hmz.Core.Renderer;
 using Silk.NET.OpenGL;
 using StbImageSharp;
 

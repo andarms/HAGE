@@ -1,4 +1,4 @@
-namespace Hmz.Core.Renderer._3D;
+namespace Hmz.Core._3D.Geometry;
 
 
 public class AnimationClip

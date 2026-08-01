@@ -1,4 +1,4 @@
-namespace Hmz.Core.Renderer._2D;
+namespace Hmz.Core.Renderer;
 
 public sealed class Texture2D(uint handle, int width, int height) : IDisposable
 {

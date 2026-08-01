@@ -1,7 +1,8 @@
 using System.Numerics;
 using Hmz.Core;
+using Hmz.Core._3D;
+using Hmz.Core._3D.Geometry;
 using Hmz.Core.GOM;
-using Hmz.Core.Renderer._3D;
 
 namespace Hmz.Game;
 

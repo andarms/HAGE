@@ -1,4 +1,4 @@
-namespace Hmz.Core.Renderer._2D;
+namespace Hmz.Core._2D;
 
 public class Circle(float x, float y, float radius)
 {

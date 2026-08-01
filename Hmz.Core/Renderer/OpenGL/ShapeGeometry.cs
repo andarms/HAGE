@@ -4,7 +4,7 @@ namespace Hmz.Core.Renderer.OpenGL;
 
 // Pure point-generation math for the procedural 2D shapes — no GL calls, so it's safe to
 // reuse from anywhere that needs the same rings (fills, borders, hit-testing, etc.).
-static class Geometry
+static class ShapeGeometry
 {
   public static float[] ToVertexData(Vector2[] points)
   {

@@ -1,7 +1,6 @@
 using FontStashSharp;
+using Hmz.Core._3D.Geometry;
 using Hmz.Core.Renderer;
-using Hmz.Core.Renderer._2D;
-using Hmz.Core.Renderer._3D;
 
 namespace Hmz.Core.Content;
 

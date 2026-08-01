@@ -1,6 +1,7 @@
-namespace Hmz.Core.Renderer._3D;
+namespace Hmz.Core._3D.Geometry;
 
 using System.Numerics;
+using Hmz.Core.Spatial;
 
 public class Cube
 {

@@ -1,5 +1,5 @@
 using Hmz.Core.Collisions;
-using Hmz.Core.Renderer._3D;
+using Hmz.Core.Spatial;
 using System.Numerics;
 
 namespace Hmz.Core.GOM;

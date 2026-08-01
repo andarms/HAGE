@@ -1,4 +1,5 @@
 using Hmz.Core.Content;
+using Hmz.Core.Hosting;
 using Hmz.Core.Input;
 using Hmz.Core.Renderer;
 using Hmz.Core.Scenes;
@@ -20,10 +21,8 @@ public static class Engine
   public static ContentManager Content = new();
   public static bool DebugMode { get; set; } = false;
 
-  public static void Initialize(GameHost host, GL gl)
+  public static void Initialize()
   {
-    GL = gl;
-    Current = host;
     Scenes.Initialize();
   }
 
@@ -38,4 +37,8 @@ public static class Engine
     Scenes.Draw();
   }
 
+  public static void Terminate()
+  {
+    Scenes.Terminate();
+  }
 }

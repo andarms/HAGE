@@ -1,4 +1,4 @@
-namespace Hmz.Core;
+namespace Hmz.Core.Hosting;
 
 public record GameOptions
 {
@@ -7,4 +7,3 @@ public record GameOptions
   public string Title { get; init; } = "Hamaze";
   public int TargetFps { get; init; } = 60;
 }
-

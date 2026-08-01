@@ -8,7 +8,7 @@ using Hmz.Core.Renderer;
 using Hmz.Core.Renderer.OpenGL;
 using ImGuiNET;
 
-namespace Hmz.Core;
+namespace Hmz.Core.Hosting;
 
 // Owns the window, the platform/fullscreen plumbing, and the render loop -
 // none of which the Game it hosts needs to know anything about.
@@ -23,6 +23,7 @@ public class GameHost
   readonly Viewport viewport;
   bool isClosed;
   bool closeRequested;
+  bool windowShown;
 
   public Viewport Viewport => viewport;
 
@@ -82,7 +83,6 @@ public class GameHost
     Graphics = new OpenGLGraphics(viewport.LogicalWidth, viewport.LogicalHeight);
 
     game.LoadScenes();
-    Engine.Initialize(this, Engine.GL);
 
     imGuiController = new ImGuiController(Engine.GL, window, input);
     ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.DockingEnable;
@@ -109,7 +109,6 @@ public class GameHost
       return;
     }
 
-    Engine.Update((float)delta);
     game.Update((float)delta);
   }
 
@@ -129,16 +128,16 @@ public class GameHost
     Engine.GL.ClearColor(0f, 0f, 0f, 1f);
     Engine.GL.Clear((uint)(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit));
 
-    // glClear ignores the viewport, so scissor the game-background clear to the fitted area.
+    // glClear ignores the viewport, so scissor the background clear to the fitted area.
     Engine.GL.Enable(EnableCap.ScissorTest);
     Engine.GL.Scissor(viewport.X, viewport.Y, (uint)viewport.Width, (uint)viewport.Height);
-    game.Draw();
+    Graphics.Clear(game.BackgroundColor);
     Engine.GL.Disable(EnableCap.ScissorTest);
 
     Engine.GL.Viewport(viewport.X, viewport.Y, (uint)viewport.Width, (uint)viewport.Height);
     Graphics.StartFrame();
 
-    Engine.Draw();
+    game.Draw();
 
     Graphics.EndFrame();
 
@@ -149,6 +148,15 @@ public class GameHost
     if (err != GLEnum.NoError)
     {
       Console.WriteLine($"GL Error: {err}");
+    }
+
+    // Deferred from window creation (see WindowController) until content has
+    // actually been rendered, so we swap in a finished frame instead of
+    // showing a blank OS-drawn window while LoadScenes/Initialize are busy.
+    if (!windowShown)
+    {
+      windowShown = true;
+      window.IsVisible = true;
     }
   }
 
@@ -166,7 +174,7 @@ public class GameHost
 
     isClosed = true;
     windowController.RestoreIfFullscreen();
-    Engine.Scenes.Terminate();
+    game.Terminate();
 
     imGuiController.Dispose();
     // ImGuiController doesn't unhook the GLFW key/mouse callbacks it registers,

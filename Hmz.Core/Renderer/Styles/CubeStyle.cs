@@ -1,4 +1,6 @@
-namespace Hmz.Core.Renderer;
+using Hmz.Core.Renderer;
+
+namespace Hmz.Core.Renderer.Styles;
 
 public record CubeStyle
 {

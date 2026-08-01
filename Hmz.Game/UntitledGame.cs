@@ -1,17 +1,12 @@
 using Hmz.Core;
-using Hmz.Core.Renderer;
+using Hmz.Core.Hosting;
 
 namespace Hmz.Game;
 
-public class UntitledGame : Core.Game
+public class UntitledGame : Core.Hosting.Game
 {
   protected override void LoadScenes()
   {
     Engine.Scenes.Add(new GameplayScene());
-  }
-
-  protected override void Draw()
-  {
-    Engine.Graphics.Clear(Color.CornflowerBlue);
   }
 }

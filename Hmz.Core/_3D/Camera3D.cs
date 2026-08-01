@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace Hmz.Core.Renderer._3D;
+namespace Hmz.Core._3D;
 
 public class Camera3D
 {
