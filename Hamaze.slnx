@@ -1,5 +1,5 @@
 <Solution>
   <Project Path="Hmz.Core/Hmz.Core.csproj" />
   <Project Path="Hmz.Game/Hmz.Game.csproj" />
-  <Project Path="Hmz.Desktop/Hmz.Desktop.csproj" />
+  <Project Path="Hmz.Windows/Hmz.Windows.csproj" />
 </Solution>

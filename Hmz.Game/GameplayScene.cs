@@ -1,8 +1,6 @@
 using System.Numerics;
 using Hmz.Core;
-using Hmz.Core.Content;
 using Hmz.Core.Renderer;
-using Hmz.Core.Renderer._2D;
 using Hmz.Core.Renderer._3D;
 using Hmz.Core.Scenes;
 
@@ -17,10 +15,12 @@ public sealed class GameplayScene : Scene
     Up = Vector3.UnitY,
     FieldOfView = MathF.PI / 4f,
   };
+  int displayMode;
 
   public override void Initialize()
   {
     base.Initialize();
+    camera.AspectRatio = Engine.Viewport.AspectRatio;
     Player player = new();
     Add(player);
   }
@@ -28,7 +28,25 @@ public sealed class GameplayScene : Scene
   public override void Update(float dt)
   {
     base.Update(dt);
-    camera.Orbit(Vector3.Zero, 0.5f * dt, 0f);
+
+    if (Engine.Input.IsKeyJustPressed(Hmz.Core.Input.Key.F4))
+    {
+      displayMode = (displayMode + 1) % 3;
+      int width = Engine.Viewport.LogicalWidth;
+      int height = Engine.Viewport.LogicalHeight;
+      switch (displayMode)
+      {
+        case 0:
+          Engine.SetWindowedSize(width, height);
+          break;
+        case 1:
+          Engine.SetWindowedSize(width * 2, height * 2);
+          break;
+        case 2:
+          Engine.FullScreen();
+          break;
+      }
+    }
   }
 
   public override void Draw()
@@ -49,36 +67,5 @@ public sealed class GameplayScene : Scene
   {
     Engine.Content.UnloadAll();
     base.Terminate();
-  }
-}
-
-
-public class Player : GameObject
-{
-  Model model;
-
-  public Player()
-  {
-    Transform.Position = new Vector3(0f, 0f, 0f);
-    Transform.Scale = new Vector3(1f, 1f, 1f);
-  }
-
-
-  public override void Initialize()
-  {
-    model = Engine.Content.LoadModel("models/player.gltf");
-    model.Transform.Position = Transform.Position;
-    model.Transform.Scale = Transform.Scale;
-    model.Play("walk");
-  }
-
-  public override void Update(float dt)
-  {
-    model.Update(dt);
-  }
-
-  public override void Draw()
-  {
-    Engine.Graphics.DrawModel(model);
   }
 }

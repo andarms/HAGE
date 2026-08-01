@@ -1,0 +1,15 @@
+using Hmz.Core;
+using Hmz.Game;
+using Hmz.Windows;
+
+GameHost host = new(
+  new UntitledGame(),
+  new GameOptions
+  {
+    Title = "Hamaze is fun",
+    Width = 640,
+    Height = 480
+  },
+  new WindowsPlatformWindowService()
+);
+host.Run();

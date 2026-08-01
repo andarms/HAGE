@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Hmz.Windows",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/Hmz.Windows/bin/Debug/net10.0/Hmz.Windows.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/Hmz.Windows",
+      "console": "internalConsole",
+      "stopAtEntry": false,
+      "logging": {
+        "moduleLoad": false
+      }
+    }
+  ]
+}

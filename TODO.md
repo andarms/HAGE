@@ -1,4 +1,4 @@
 # window
 
-- [ ] Preserve aspect ratio on resize
-- [ ] Allow Fullscreen mode
+- [x] Preserve aspect ratio on resize
+- [x] Allow Fullscreen mode

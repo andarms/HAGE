@@ -8,26 +8,29 @@ namespace Hmz.Core;
 
 public static class Engine
 {
-  internal static Game Current { get; set; }
+  internal static GameHost Current { get; set; }
   internal static GL GL;
 
   public static IGraphics Graphics => Current.Graphics;
+  public static Viewport Viewport => Current.Viewport;
+  public static void FullScreen() => Current.FullScreen();
+  public static void SetWindowedSize(int width, int height) => Current.SetWindowedSize(width, height);
   public static InputManager Input { get; } = new();
   public static SceneManager Scenes { get; } = new();
   public static ContentManager Content = new();
   public static bool DebugMode { get; set; } = false;
 
-  public static void Initialize(Game game, GL gl)
+  public static void Initialize(GameHost host, GL gl)
   {
     GL = gl;
-    Current = game;
+    Current = host;
     Scenes.Initialize();
   }
 
   public static void Update(float deltaTime)
   {
-    Input.EndFrame();
     Scenes.Update(deltaTime);
+    Input.EndFrame();
   }
 
   public static void Draw()
