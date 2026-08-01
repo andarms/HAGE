@@ -22,7 +22,7 @@ public sealed class GameplayScene : Scene
     base.Initialize();
     camera.AspectRatio = Engine.Viewport.AspectRatio;
     Player player = new();
-    Add(player);
+    Instances.Add(player);
   }
 
   public override void Update(float dt)

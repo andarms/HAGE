@@ -1,59 +1,36 @@
+using Hmz.Core.GOM;
+
 namespace Hmz.Core.Scenes;
 
 
 public class Scene
 {
-  readonly List<GameObject> instances = [];
-
-  readonly Queue<GameObject> pendingInstances = new();
-
-  readonly Queue<GameObject> pendingRemoveInstances = new();
-
-  public IReadOnlyList<GameObject> Instances => instances.AsReadOnly();
-
-  void FlushQueues()
-  {
-    while (pendingRemoveInstances.TryDequeue(out var go))
-    {
-      instances.Remove(go);
-      go.Terminate();
-    }
-
-    while (pendingInstances.TryDequeue(out var go))
-    {
-      instances.Add(go);
-      go.Initialize();
-    }
-  }
+  public GameObjectCollection Instances { get; } = [];
 
   public virtual void Initialize()
   {
-    instances.ForEach(i => i.Initialize());
+    foreach (GameObject instance in Instances)
+    {
+      instance.Initialize();
+    }
   }
 
   internal void HandleInput()
   {
-    instances.ForEach(i => i.HandleInput());
+    foreach (GameObject instance in Instances)
+    {
+      instance.HandleInput();
+    }
   }
 
   public virtual void Update(float dt)
   {
-    FlushQueues();
-
-    int instanceCount = instances.Count;
-    for (int i = 0; i < instanceCount; i++)
-    {
-      instances[i].Update(dt);
-      if (instances[i].IsActive == false)
-      {
-        pendingRemoveInstances.Enqueue(instances[i]);
-      }
-    }
+    Instances.Update(dt, onAdded: i => i.Initialize(), onRemoved: i => i.Terminate());
   }
 
   public virtual void Draw()
   {
-    var instancesOrdered = instances.OrderBy(i => i.DrawOrder).ThenBy(i => i.WorldTransform.Position.Y);
+    var instancesOrdered = Instances.OrderBy(i => i.DrawOrder).ThenBy(i => i.WorldTransform.Position.Y);
     foreach (GameObject instance in instancesOrdered)
     {
       instance.Draw();
@@ -76,18 +53,14 @@ public class Scene
 
   public virtual void Terminate()
   {
-    pendingInstances.Clear();
-    pendingRemoveInstances.Clear();
-
-    instances.ForEach(i => i.Terminate());
-    instances.Clear();
+    foreach (GameObject instance in Instances)
+    {
+      instance.Terminate();
+    }
+    Instances.Clear();
   }
 
   public virtual bool IsBusy() => false;
-
-  public void Add(GameObject obj) => pendingInstances.Enqueue(obj);
-
-  public void Remove(GameObject obj) => pendingRemoveInstances.Enqueue(obj);
 
   internal void RestoreSaveData()
   {

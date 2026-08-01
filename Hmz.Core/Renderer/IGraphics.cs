@@ -33,7 +33,7 @@ public interface IGraphics : IDisposable
 
 
   void DrawCube(Cube cube, CubeStyle style);
-  void DrawModel(Model model);
+  void DrawModel(Model model, Matrix4x4 worldMatrix, Matrix4x4[] boneMatrices);
   #endregion
 
   #region Text Drawing

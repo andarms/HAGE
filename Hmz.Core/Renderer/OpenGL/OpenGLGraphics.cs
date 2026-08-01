@@ -261,21 +261,19 @@ public sealed class OpenGLGraphics : IGraphics
     }
   }
 
-  public void DrawModel(Model model)
+  public void DrawModel(Model model, Matrix4x4 worldMatrix, Matrix4x4[] boneMatrices)
   {
-    Matrix4x4 transform = model.GetRenderMatrix();
-
     foreach (Mesh mesh in model.Meshes)
     {
       Engine.GL.BindVertexArray(mesh.Vao);
-      shader.SetMatrix("uModel", mesh.NodeTransform * transform);
+      shader.SetMatrix("uModel", mesh.NodeTransform * worldMatrix);
       shader.SetColor("uColor", Color.White);
 
-      bool skinned = mesh.IsSkinned && model.BoneMatrices.Length > 0;
+      bool skinned = mesh.IsSkinned && boneMatrices.Length > 0;
       shader.SetBool("uSkinned", skinned);
       if (skinned)
       {
-        shader.SetMatrixArray("uBones", model.BoneMatrices);
+        shader.SetMatrixArray("uBones", boneMatrices);
       }
 
       if (mesh.Texture != null)
