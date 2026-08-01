@@ -1,4 +1,6 @@
 using Hmz.Core.Collisions;
+using Hmz.Core.Renderer;
+using Hmz.Core.Renderer.Styles;
 using Hmz.Core.Spatial;
 using System.Numerics;
 
@@ -25,7 +27,7 @@ public class GameObject
 
   public ComponentCollection Components { get; }
 
-  public Collider? Collider { get; }
+  public Collider? Collider { get; protected set; }
 
   public GameObject()
   {
@@ -37,6 +39,8 @@ public class GameObject
 
   public virtual void Initialize()
   {
+    if (Collider != null) Engine.Collisions.Register(this);
+
     foreach (GameObject child in Children)
     {
       child.Initialize();
@@ -70,6 +74,11 @@ public class GameObject
 
   public virtual void Debug()
   {
+    if (Collider != null)
+    {
+      var cube = Collider.Bounds(GlobalPosition).ToCube();
+      Engine.Graphics.DrawCube(cube, new CubeStyle { Wireframe = true, Color = Color.Green });
+    }
     foreach (GameObject child in Children)
     {
       child.Debug();
@@ -84,6 +93,7 @@ public class GameObject
       child.Terminate();
       child.Parent = null;
     }
+    if (Collider != null) Engine.Collisions.Unregister(this);
     IsActive = false;
     Components.Terminate();
     Children.Clear();

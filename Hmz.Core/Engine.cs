@@ -1,3 +1,4 @@
+using Hmz.Core.Collisions;
 using Hmz.Core.Content;
 using Hmz.Core.Hosting;
 using Hmz.Core.Input;
@@ -18,7 +19,8 @@ public static class Engine
   public static void SetWindowedSize(int width, int height) => Current.SetWindowedSize(width, height);
   public static InputManager Input { get; } = new();
   public static SceneManager Scenes { get; } = new();
-  public static ContentManager Content = new();
+  public static ContentManager Content { get; } = new();
+  public static CollisionsManager Collisions { get; } = new();
   public static bool DebugMode { get; set; } = false;
 
   public static void Initialize()
@@ -29,6 +31,13 @@ public static class Engine
   public static void Update(float deltaTime)
   {
     Scenes.Update(deltaTime);
+    Collisions.UpdateCollisions();
+
+    if (Input.IsKeyJustPressed(Key.F1))
+    {
+      DebugMode = !DebugMode;
+    }
+
     Input.EndFrame();
   }
 

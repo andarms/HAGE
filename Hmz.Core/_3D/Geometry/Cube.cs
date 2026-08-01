@@ -8,22 +8,30 @@ public class Cube
   public const uint VertexCount = 8;
   public const uint IndexCount = 36;
 
-  public float Size { get; set; } = 1f;
+  public Vector3 Size { get; set; } = Vector3.One;
   public Transform Transform { get; set; } = new Transform();
+
+  public Cube() { }
+
+  public Cube(Vector3 minCorner, float width, float height, float depth)
+  {
+    Size = new Vector3(width, height, depth);
+    Transform.Position = minCorner + Size / 2f;
+  }
 
   public Vector3[] GetVertices()
   {
-    float halfSize = Size / 2f;
+    Vector3 half = Size / 2f;
     return
     [
-      new(-halfSize, -halfSize, -halfSize),
-      new(halfSize, -halfSize, -halfSize),
-      new(halfSize, halfSize, -halfSize),
-      new(-halfSize, halfSize, -halfSize),
-      new(-halfSize, -halfSize, halfSize),
-      new(halfSize, -halfSize, halfSize),
-      new(halfSize, halfSize, halfSize),
-      new(-halfSize, halfSize, halfSize)
+      new(-half.X, -half.Y, -half.Z),
+      new(half.X, -half.Y, -half.Z),
+      new(half.X, half.Y, -half.Z),
+      new(-half.X, half.Y, -half.Z),
+      new(-half.X, -half.Y, half.Z),
+      new(half.X, -half.Y, half.Z),
+      new(half.X, half.Y, half.Z),
+      new(-half.X, half.Y, half.Z)
     ];
   }
 

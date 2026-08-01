@@ -23,8 +23,10 @@ public sealed class GameplayScene : Scene
   {
     base.Initialize();
     camera.AspectRatio = Engine.Viewport.AspectRatio;
-    Player player = new();
+    Player.Player player = new();
     Instances.Add(player);
+    Tree tree = new();
+    Instances.Add(tree);
   }
 
   public override void Update(float dt)
