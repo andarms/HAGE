@@ -4,12 +4,9 @@ using Silk.NET.OpenGL;
 using Silk.NET.OpenGL.Extensions.ImGui;
 using Silk.NET.Windowing;
 
-using System.Numerics;
-using Hmz.Core.Renderer._3D;
 using Hmz.Core.Renderer;
 using Hmz.Core.Renderer.OpenGL;
-using Hmz.Core.Content;
-using Hmz.Core.Renderer._2D;
+using Hmz.Core.Scenes;
 using ImGuiNET;
 
 namespace Hmz.Core;
@@ -30,16 +27,15 @@ public class Game
   public IGraphics Graphics;
   private int width;
   private int height;
+  readonly Scene startupScene;
+  bool isClosed;
+  bool closeRequested;
 
-  readonly Camera3D camera;
-  readonly Cube cube;
-
-  readonly ContentManager content = new ContentManager();
-  Texture2D texture;
-  Model treeModel;
-
-  public Game(GameOptions? options = null)
+  public Game(Scene startupScene, GameOptions? options = null)
   {
+    ArgumentNullException.ThrowIfNull(startupScene);
+    this.startupScene = startupScene;
+
     options ??= new GameOptions();
     width = options.Width;
     height = options.Height;
@@ -55,17 +51,6 @@ public class Game
       new APIVersion(3, 3)
     );
 
-    camera = new Camera3D
-    {
-      Position = new(0, 8.0f, 9.0f),
-      Target = new Vector3(0f, 0f, 0f),
-      Up = Vector3.UnitY,
-      FieldOfView = MathF.PI / 4f,
-    };
-    camera.Rotate(0f, 0f);
-
-    cube = new Cube() { Size = 2f };
-
     window = Window.Create(windowOptions);
 
     window.Load += Initialize;
@@ -78,8 +63,15 @@ public class Game
   public void Run()
   {
     Engine.Current = this;
-    window.Run();
-    window.Dispose();
+    try
+    {
+      window.Run();
+    }
+    finally
+    {
+      OnClose();
+      window.Dispose();
+    }
   }
 
   private void Initialize()
@@ -89,19 +81,19 @@ public class Game
     {
       input.Keyboards[i].KeyDown += KeyDown;
     }
+    Engine.Input.Initialize(input);
 
     Engine.GL = GL.GetApi(window);
     Graphics = new OpenGLGraphics(width, height);
+
+    Engine.Scenes.Add(startupScene);
+    Engine.Initialize(this, Engine.GL);
 
     imGuiController = new ImGuiController(Engine.GL, window, input);
     ImGui.GetIO().ConfigFlags |= ImGuiConfigFlags.DockingEnable;
 
     window.FramebufferResize += ResizeViewport;
 
-    texture = content.LoadTexture("textures/tiny_dungeon.png");
-    treeModel = content.LoadModel("models/player.gltf");
-    treeModel.Transform.Position = new Vector3(2f, 0f, 2f);
-    treeModel.Play("walk");
   }
 
   void ResizeViewport(Vector2D<int> size)
@@ -117,8 +109,13 @@ public class Game
     GameTime.DeltaTime = (float)delta;
     GameTime.TotalTime += (float)delta;
 
-    camera.Orbit(Vector3.Zero, 0.5f * (float)delta, 0);
-    treeModel.Update((float)delta);
+    if (closeRequested)
+    {
+      window.Close();
+      return;
+    }
+
+    Engine.Update((float)delta);
   }
 
   private void Render(double delta)
@@ -133,17 +130,7 @@ public class Game
     Graphics.Clear(Color.CornflowerBlue);
     Graphics.StartFrame();
 
-    Graphics.StartMode3D(camera);
-    Graphics.DrawModel(treeModel);
-    Graphics.DrawCube(cube, new CubeStyle { Color = Color.Red, Wireframe = true });
-    Graphics.EndMode3D();
-
-    Graphics.DrawText($"FPS: {Performance.FPS}", 10, 10, new TextStyle
-    {
-      Color = Color.White,
-      FontSize = 24f,
-      Outline = new Stroke { Color = Color.Black, Width = 2f },
-    });
+    Engine.Draw();
 
     Graphics.EndFrame();
 
@@ -164,16 +151,36 @@ public class Game
 
   private void OnClose()
   {
-    treeModel.Dispose();
-    Graphics.Dispose();
+    if (isClosed)
+    {
+      return;
+    }
+
+    isClosed = true;
+    Engine.Scenes.Terminate();
+
     imGuiController.Dispose();
+    // ImGuiController doesn't unhook the GLFW key/mouse callbacks it registers,
+    // so any further input event would invoke a dangling callback into the
+    // now-destroyed ImGui context and crash with an access violation.
+    // Disposing the input context unregisters those GLFW callbacks. This is
+    // also why window.Close() must never be called from inside an input
+    // event handler (see KeyDown): Closing runs synchronously off the same
+    // call stack, so a later subscriber on that same key event (like
+    // ImGuiController) would still fire into the resources we just disposed.
+    input.Dispose();
+    Graphics.Dispose();
   }
 
   private void KeyDown(IKeyboard keyboard, Key key, int scancode)
   {
     if (key == Key.Escape)
     {
-      window.Close();
+      // Deferred to Update(): calling window.Close() here would run Closing
+      // (and dispose ImGuiController) synchronously inside this same GLFW
+      // key-event dispatch, crashing any subscriber still queued after us
+      // on the same event (see OnClose).
+      closeRequested = true;
     }
   }
 }

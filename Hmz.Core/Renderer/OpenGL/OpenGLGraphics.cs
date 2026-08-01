@@ -231,7 +231,7 @@ public sealed class OpenGLGraphics : IGraphics
   public void DrawCube(Cube cube, CubeStyle style)
   {
     Engine.GL.BindVertexArray(cubeVao);
-    shader.SetMatrix("uModel", cube.GetModelMatrix());
+    shader.SetMatrix("uModel", cube.GetRenderMatrix());
 
     if (style.Wireframe)
     {
@@ -263,7 +263,7 @@ public sealed class OpenGLGraphics : IGraphics
 
   public void DrawModel(Model model)
   {
-    Matrix4x4 transform = model.GetModelMatrix();
+    Matrix4x4 transform = model.GetRenderMatrix();
 
     foreach (Mesh mesh in model.Meshes)
     {

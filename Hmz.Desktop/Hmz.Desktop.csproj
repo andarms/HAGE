@@ -9,11 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Hmz.Core\Hmz.Core.csproj" />
-  </ItemGroup>
-
-  <!-- MyGame.csproj -->
-  <ItemGroup>
-    <None Include="assets\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <ProjectReference Include="..\Hmz.Game\Hmz.Game.csproj" />
   </ItemGroup>
 
 </Project>

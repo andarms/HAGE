@@ -39,7 +39,7 @@ public class Cube
     ];
   }
 
-  public Matrix4x4 GetModelMatrix()
+  public Matrix4x4 GetRenderMatrix()
   {
     Matrix4x4 translation = Matrix4x4.CreateTranslation(Transform.Position);
     Matrix4x4 rotation = Matrix4x4.CreateFromYawPitchRoll(Transform.Rotation.Y, Transform.Rotation.X, Transform.Rotation.Z);
