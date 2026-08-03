@@ -13,6 +13,13 @@ public static class Engine
   internal static GameHost Current { get; set; }
   internal static GL GL;
 
+  // Simulation step for Scenes.Update/collision resolution, run through the accumulator in
+  // Update below so gameplay and physics behave the same regardless of render frame rate.
+  public const float FixedDeltaTime = 1f / 60f;
+  const int MaxFixedStepsPerUpdate = 5;
+
+  static float accumulator;
+
   public static IGraphics Graphics => Current.Graphics;
   public static Viewport Viewport => Current.Viewport;
   public static void FullScreen() => Current.FullScreen();
@@ -30,8 +37,23 @@ public static class Engine
 
   public static void Update(float deltaTime)
   {
-    Scenes.Update(deltaTime);
-    Collisions.UpdateCollisions();
+    accumulator += deltaTime;
+
+    int steps = 0;
+    while (accumulator >= FixedDeltaTime && steps < MaxFixedStepsPerUpdate)
+    {
+      Scenes.Update(FixedDeltaTime);
+      Collisions.UpdateCollisions();
+      accumulator -= FixedDeltaTime;
+      steps++;
+    }
+
+    // A big stall (e.g. a debugger pause) would otherwise queue an ever-growing catch-up,
+    // stalling every future frame trying to run it off. Drop the rest instead.
+    if (steps == MaxFixedStepsPerUpdate)
+    {
+      accumulator = 0f;
+    }
 
     if (Input.IsKeyJustPressed(Key.F1))
     {

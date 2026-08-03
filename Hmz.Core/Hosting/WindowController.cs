@@ -18,7 +18,12 @@ sealed class WindowController
     WindowOptions windowOptions = WindowOptions.Default;
     windowOptions.Size = new Vector2D<int>(options.Width, options.Height);
     windowOptions.Title = options.Title;
+    // VSync defaults to true and locks the swap interval to the display's refresh rate,
+    // silently overriding FramesPerSecond regardless of its value. Disable it so TargetFps
+    // actually governs the loop.
+    windowOptions.VSync = false;
     windowOptions.FramesPerSecond = options.TargetFps;
+    windowOptions.UpdatesPerSecond = options.TargetFps;
     windowOptions.API = new GraphicsAPI(
       ContextAPI.OpenGL,
       ContextProfile.Core,

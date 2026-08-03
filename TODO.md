@@ -66,18 +66,6 @@ Add `Engine.ResetForTests()` or scoped static-state cleanup, internal seams for 
 
 `Engine.Update` should call `Engine.Scenes.HandleInput()`, or the unused pipeline should be removed and gameplay should standardize on polling `Engine.Input`.
 
-### [ ] Reset `GameTime.TotalTime`
-
-Add reset and overflow handling.
-
-### [ ] Smooth the FPS counter
-
-Replace instantaneous `1 / deltaTime` with a rolling average.
-
-### [ ] Add a fixed-timestep game loop
-
-Add an accumulator before physics and collision resolution become frame-rate dependent.
-
 ### [ ] Make ImGui integration configurable
 
 Make ImGui opt-in through `GameOptions` and retain the callback-lifetime safety workaround.
@@ -85,6 +73,20 @@ Make ImGui opt-in through `GameOptions` and retain the callback-lifetime safety 
 **Notes**
 
 Do not replace the public static surface with constructor DI or a service-locator redesign. The engine supports one active runtime host; tests must reset static state between cases.
+
+**Completed**
+
+### [x] Reset `GameTime.TotalTime`
+
+Added `GameTime.Reset()` and wrapping at 24 hours to bound float accumulation error; mutation now goes through `GameTime.Advance()` instead of direct property sets.
+
+### [x] Smooth the FPS counter
+
+`Performance.FPS` now averages over a 30-sample rolling window instead of `1 / deltaTime`.
+
+### [x] Add a fixed-timestep game loop
+
+`Engine.Update` accumulates real frame time and runs `Scenes.Update`/`Collisions.UpdateCollisions()` at a fixed `Engine.FixedDeltaTime` (1/60s) step, capped at 5 catch-up steps per call to avoid a spiral of death after a stall. Rendering still runs at the variable display rate; no render-state interpolation between fixed steps yet.
 
 ### Game Objects & Scenes
 

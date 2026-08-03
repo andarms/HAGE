@@ -100,8 +100,7 @@ public class GameHost
 
   private void BaseUpdate(double delta)
   {
-    GameTime.DeltaTime = (float)delta;
-    GameTime.TotalTime += (float)delta;
+    GameTime.Advance((float)delta);
 
     if (closeRequested)
     {
@@ -114,8 +113,7 @@ public class GameHost
 
   private void BaseRender(double delta)
   {
-    Performance.FrameTimeMs = (float)(delta * 1000.0);
-    Performance.FPS = delta > 0 ? (int)Math.Round(1.0 / delta) : 0;
+    Performance.Sample((float)delta);
 
     // Fullscreen and windowed transitions can briefly report a zero framebuffer.
     // Refresh here so the first valid size after the transition is applied.
