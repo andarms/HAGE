@@ -25,17 +25,10 @@ public class Movement : Component
     // Model's neutral pose faces +Z, so yaw = angle from +Z to the movement direction.
     float targetYaw = MathF.Atan2(direction.X, direction.Z);
     float currentYaw = Owner.Transform.Rotation.Y;
-    float newYaw = LerpAngle(currentYaw, targetYaw, MathF.Min(RotationSpeed * dt, 1f));
+    float newYaw = MathHelper.LerpAngle(currentYaw, targetYaw, MathF.Min(RotationSpeed * dt, 1f));
     Owner.Transform.Rotation = new Vector3(0f, newYaw, 0f);
 
     Vector3 targetPosition = Owner.Transform.Position + direction * Speed * dt;
     Owner.Transform.Position = Engine.Collisions.MoveAndCollide(Owner, targetPosition);
-  }
-
-  // Lerps by the shortest angular path, so crossing the -pi/pi wraparound doesn't spin the long way.
-  static float LerpAngle(float from, float to, float t)
-  {
-    float delta = ((to - from + MathF.PI) % MathF.Tau + MathF.Tau) % MathF.Tau - MathF.PI;
-    return from + delta * t;
   }
 }

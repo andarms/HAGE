@@ -14,9 +14,14 @@ public sealed class ContentManager
 
   public Font LoadFont(string path)
   {
+    string key = Resolve(path);
+    if (cache.TryGetValue(key, out object? cached) && cached is Font cachedFont) return cachedFont;
+
     FontSystem system = new();
-    system.AddFont(File.ReadAllBytes(Resolve(path)));
-    return new Font(system);
+    system.AddFont(File.ReadAllBytes(key));
+    Font font = new(system);
+    cache[key] = font;
+    return font;
   }
 
   static Font LoadEmbeddedFont()
@@ -26,9 +31,25 @@ public sealed class ContentManager
     return new Font(system);
   }
 
-  public Texture2D LoadTexture(string path) => TextureLoader.Upload(File.ReadAllBytes(Resolve(path)));
+  public Texture2D LoadTexture(string path)
+  {
+    string key = Resolve(path);
+    if (cache.TryGetValue(key, out object? cached) && cached is Texture2D cachedTexture) return cachedTexture;
 
-  public Model LoadModel(string path) => ModelLoader.Load(path, Resolve(path));
+    Texture2D texture = TextureLoader.Upload(File.ReadAllBytes(key));
+    cache[key] = texture;
+    return texture;
+  }
+
+  public Model LoadModel(string path)
+  {
+    string key = Resolve(path);
+    if (cache.TryGetValue(key, out object? cached) && cached is Model cachedModel) return cachedModel;
+
+    Model model = ModelLoader.Load(path, key);
+    cache[key] = model;
+    return model;
+  }
 
   public Shader LoadShader(string path)
   {
@@ -37,7 +58,7 @@ public sealed class ContentManager
 
   public bool TryGet<T>(string path, out T? asset) where T : class
   {
-    if (cache.TryGetValue(path, out var obj) && obj is T typedAsset)
+    if (cache.TryGetValue(Resolve(path), out var obj) && obj is T typedAsset)
     {
       asset = typedAsset;
       return true;
@@ -48,13 +69,14 @@ public sealed class ContentManager
 
   public void Unload(string path)
   {
-    if (cache.TryGetValue(path, out var asset))
+    string key = Resolve(path);
+    if (cache.TryGetValue(key, out var asset))
     {
       if (asset is IDisposable disposable)
       {
         disposable.Dispose();
       }
-      cache.Remove(path);
+      cache.Remove(key);
     }
   }
 

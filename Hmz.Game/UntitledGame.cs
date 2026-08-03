@@ -10,6 +10,7 @@ public class UntitledGame : Core.Hosting.Game
   {
     MapActions();
     Engine.Scenes.Add(new GameplayScene());
+    Engine.Scenes.SetStartScene<GameplayScene>();
   }
 
 

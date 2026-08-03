@@ -70,46 +70,10 @@ public class ModelRenderer(Model model) : Component
   {
     if (clip == null || !clip.Channels.TryGetValue(node.Name, out AnimationChannel? channel)) return null;
 
-    Vector3 position = SampleVector(channel.Positions, animationTimeTicks, Vector3.Zero);
-    Quaternion rotation = SampleQuaternion(channel.Rotations, animationTimeTicks, Quaternion.Identity);
-    Vector3 scale = SampleVector(channel.Scales, animationTimeTicks, Vector3.One);
+    Vector3 position = MathHelper.SampleKeyframes(channel.Positions, animationTimeTicks, Vector3.Zero, Vector3.Lerp);
+    Quaternion rotation = MathHelper.SampleKeyframes(channel.Rotations, animationTimeTicks, Quaternion.Identity, Quaternion.Slerp);
+    Vector3 scale = MathHelper.SampleKeyframes(channel.Scales, animationTimeTicks, Vector3.One, Vector3.Lerp);
 
     return Matrix4x4.CreateScale(scale) * Matrix4x4.CreateFromQuaternion(rotation) * Matrix4x4.CreateTranslation(position);
-  }
-
-  static Vector3 SampleVector(List<(float Time, Vector3 Value)> keys, float time, Vector3 fallback)
-  {
-    if (keys.Count == 0) return fallback;
-    if (keys.Count == 1 || time <= keys[0].Time) return keys[0].Value;
-    if (time >= keys[^1].Time) return keys[^1].Value;
-
-    for (int i = 0; i < keys.Count - 1; i++)
-    {
-      if (time <= keys[i + 1].Time)
-      {
-        float span = keys[i + 1].Time - keys[i].Time;
-        float t = span > 0f ? (time - keys[i].Time) / span : 0f;
-        return Vector3.Lerp(keys[i].Value, keys[i + 1].Value, t);
-      }
-    }
-    return keys[^1].Value;
-  }
-
-  static Quaternion SampleQuaternion(List<(float Time, Quaternion Value)> keys, float time, Quaternion fallback)
-  {
-    if (keys.Count == 0) return fallback;
-    if (keys.Count == 1 || time <= keys[0].Time) return keys[0].Value;
-    if (time >= keys[^1].Time) return keys[^1].Value;
-
-    for (int i = 0; i < keys.Count - 1; i++)
-    {
-      if (time <= keys[i + 1].Time)
-      {
-        float span = keys[i + 1].Time - keys[i].Time;
-        float t = span > 0f ? (time - keys[i].Time) / span : 0f;
-        return Quaternion.Slerp(keys[i].Value, keys[i + 1].Value, t);
-      }
-    }
-    return keys[^1].Value;
   }
 }

@@ -16,7 +16,11 @@ public class Camera2D
     Matrix4x4 scale = Matrix4x4.CreateScale(Zoom, Zoom, 1f);
     Matrix4x4 targetTranslation = Matrix4x4.CreateTranslation(Target.X, Target.Y, 0f);
 
-    return scale * rotation * translation * targetTranslation;
+    // Row-vector convention (v' = v * M): move to camera-space origin first, then
+    // un-rotate, then zoom, then offset into the target's screen position — scaling/
+    // rotating before the -Position translation would pivot around the world origin
+    // instead of the camera, making pan and zoom interact incorrectly.
+    return translation * rotation * scale * targetTranslation;
   }
 
   public void Move(Vector2 direction, float amount)
@@ -32,13 +36,11 @@ public class Camera2D
 
   public void ZoomIn(float amount)
   {
-    Zoom += amount;
-    if (Zoom > 10f) { Zoom = 10f; } // Prevent zooming in too much
+    Zoom = Math.Clamp(Zoom + amount, 0.1f, 10f);
   }
 
   public void ZoomOut(float amount)
   {
-    Zoom -= amount;
-    if (Zoom < 0.1f) { Zoom = 0.1f; } // Prevent zooming out too much
+    Zoom = Math.Clamp(Zoom - amount, 0.1f, 10f);
   }
 }

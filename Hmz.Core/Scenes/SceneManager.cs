@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 namespace Hmz.Core.Scenes;
 
 public class SceneManager
@@ -8,6 +7,7 @@ public class SceneManager
   Scene? current = null;
   public Scene? Current => current;
   Scene? nextScene = null;
+  Scene? startScene = null;
 
   readonly Stack<Scene> sceneStack = new();
   readonly Dictionary<Type, Scene> scenes = new();
@@ -15,13 +15,13 @@ public class SceneManager
 
   public void Initialize()
   {
-    if (Current == null && scenes.Count > 0)
+    if (Current == null && startScene != null)
     {
-      current = scenes.First().Value;
+      current = startScene;
     }
     else
     {
-      throw new("Not Scenes avaible");
+      throw new InvalidOperationException("A start scene must be selected before initialization.");
     }
     Current?.Initialize();
   }
@@ -76,6 +76,11 @@ public class SceneManager
   public void Add<T>(T scene) where T : Scene
   {
     scenes.Add(typeof(T), scene);
+  }
+
+  public void SetStartScene<T>() where T : Scene
+  {
+    startScene = Get<T>();
   }
 
   public void Push<T>() where T : Scene
