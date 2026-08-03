@@ -178,11 +178,26 @@ static class ModelLoader
     Engine.GL.EnableVertexAttribArray(2);
     Engine.GL.EnableVertexAttribArray(3);
 
+    // Per-instance model matrix for GPU-instanced draws of repeated non-skinned meshes.
+    uint instanceVbo = Engine.GL.GenBuffer();
+    Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, instanceVbo);
+    Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, new float[16], BufferUsageARB.DynamicDraw);
+    unsafe
+    {
+      for (uint row = 0; row < 4; row++)
+      {
+        Engine.GL.VertexAttribPointer(4 + row, 4, VertexAttribPointerType.Float, false, 16 * sizeof(float), (void*)(row * 4 * sizeof(float)));
+        Engine.GL.EnableVertexAttribArray(4 + row);
+        Engine.GL.VertexAttribDivisor(4 + row, 1);
+      }
+    }
+
     return new EngineMesh
     {
       Vao = vao,
       Vbo = vbo,
       Ebo = ebo,
+      InstanceVbo = instanceVbo,
       IndexCount = (uint)indices.Count,
       NodeTransform = nodeTransform,
       Texture = texture,

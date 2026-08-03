@@ -6,10 +6,7 @@ Foundations and testability: make the engine easier to validate while keeping th
 
 ### Next Actions
 
-- [Add a test project](#-add-a-test-project)
-- [Improve Engine testability without replacing `Engine.X`](#-improve-engine-testability-without-replacing-enginex)
-- [Define explicit start-scene selection](#-define-explicit-start-scene-selection)
-- [Add draw-call batching and instancing](#-add-draw-call-batching-and-instancing)
+No additional next actions currently recorded beyond the active project tasks below.
 
 ---
 
@@ -117,7 +114,7 @@ Implement UI/save hooks or delete the scaffolding.
 
 Correct error messages, use appropriate exception types, and replace the stack-underflow `Console.WriteLine` path with consistent error handling.
 
-### [ ] Define explicit start-scene selection
+### [x] Define explicit start-scene selection
 
 Add a `SetStartScene<T>()` or equivalent entry-point API.
 
@@ -160,10 +157,6 @@ Display the current scene's entities and expose their components and editable pr
 Make rendering efficient, visually capable, diagnosable, and deliberate about backend scope.
 
 **Tasks**
-
-### [ ] Add draw-call batching and instancing
-
-`StartFrame`/`EndFrame` are currently empty and every primitive, glyph, and mesh issues its own draw call.
 
 ### [ ] Add lighting and materials
 
@@ -208,6 +201,12 @@ Build a debug UI or remove the integration until it is used.
 **Notes**
 
 `OpenGLGraphics` is currently the only implementation of `IGraphics`.
+
+**Completed**
+
+### [x] Add draw-call batching and instancing
+
+2D shapes/lines and text glyphs batch into per-flush draw calls (`EndMode2D`, per `DrawText` call). Cube/Sphere and repeated non-skinned model meshes (e.g. `Tree`) use GPU instancing (`glDrawElementsInstanced`) flushed at `EndMode3D`. Skinned meshes (`Player`) keep the direct per-instance draw path since bone matrices vary per instance.
 
 ### 2D Features
 
@@ -261,13 +260,15 @@ Add normals to the glTF import pipeline.
 
 Consider capsule, plane, and cylinder meshes beyond `Cube` and `Sphere`.
 
-### [ ] Consider instanced rendering
-
-Support repeated meshes such as trees and props once batching lands.
-
 ### [ ] Add async/background model and texture loading
 
 Keep file loading off the main thread and upload GPU resources on the main thread.
+
+**Completed**
+
+### [x] Consider instanced rendering
+
+Repeated meshes such as trees and props now instance via `glDrawElementsInstanced`, grouped by shared `Mesh` (`ContentManager` already caches `Model`/`Mesh` by asset path, so multiple instances of the same asset share one `Vao`).
 
 ### Physics & Collision
 

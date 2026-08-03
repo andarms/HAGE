@@ -5,6 +5,7 @@ using Hmz.Core.Content;
 using Hmz.Core.Renderer.Styles;
 using Silk.NET.OpenGL;
 using System.Numerics;
+using System.Runtime.InteropServices;
 
 namespace Hmz.Core.Renderer.OpenGL;
 
@@ -12,10 +13,35 @@ public sealed class OpenGLGraphics : IGraphics
 {
   readonly Shader shader;
   readonly uint vao, vbo;
-  readonly uint cubeVao, cubeVbo, cubeEbo;
-  readonly uint sphereVao, sphereVbo, sphereTriangleEbo, sphereLineEbo;
-  readonly uint dynamicVao, dynamicVbo;
+  readonly uint cubeVao, cubeVbo, cubeEbo, cubeInstanceVbo;
+  readonly uint sphereVao, sphereVbo, sphereTriangleEbo, sphereLineEbo, sphereInstanceVbo;
+  readonly uint batch2DVao, batch2DVbo;
+  readonly uint gridVao, gridVbo;
   readonly FontRenderer fontRenderer;
+
+  int drawCallCount;
+  public int DrawCallCount => drawCallCount + fontRenderer.DrawCallCount;
+
+  // 2D fills and strokes queued between StartMode2D/EndMode2D, flushed as a batch.
+  readonly List<float> pendingFillVertices = [];
+  readonly Dictionary<float, List<float>> pendingLinesByWidth = [];
+
+  const int Batch2DFloatsPerVertex = 7; // pos(3) + color(4)
+
+  // Per-instance transform + color for GPU-instanced Cube/Sphere draws.
+  [StructLayout(LayoutKind.Sequential)]
+  readonly record struct InstanceData(Matrix4x4 Model, Vector4 Color);
+
+  readonly List<InstanceData> pendingCubeFill = [];
+  readonly Dictionary<float, List<InstanceData>> pendingCubeWireframe = [];
+  readonly Dictionary<float, List<InstanceData>> pendingCubeBorder = [];
+
+  readonly List<InstanceData> pendingSphereFill = [];
+  readonly Dictionary<float, List<InstanceData>> pendingSphereWireframe = [];
+  readonly Dictionary<float, List<InstanceData>> pendingSphereBorder = [];
+
+  // Non-skinned mesh draws queued between StartMode3D/EndMode3D, grouped by shared Mesh.
+  readonly Dictionary<Mesh, List<Matrix4x4>> pendingMeshInstances = [];
 
   Matrix4x4 projection;
 
@@ -65,6 +91,11 @@ public sealed class OpenGLGraphics : IGraphics
 
     ConfigurePositionOnlyLayout();
 
+    cubeInstanceVbo = Engine.GL.GenBuffer();
+    Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, cubeInstanceVbo);
+    Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, new float[20], BufferUsageARB.DynamicDraw);
+    ConfigureInstanceLayout(includeColor: true);
+
     sphereVao = Engine.GL.GenVertexArray();
     Engine.GL.BindVertexArray(sphereVao);
 
@@ -82,12 +113,24 @@ public sealed class OpenGLGraphics : IGraphics
 
     ConfigurePositionOnlyLayout();
 
-    // Position-only, re-buffered per draw call — backs the procedural 2D shapes (rectangles, circles, lines).
-    dynamicVao = Engine.GL.GenVertexArray();
-    Engine.GL.BindVertexArray(dynamicVao);
+    sphereInstanceVbo = Engine.GL.GenBuffer();
+    Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, sphereInstanceVbo);
+    Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, new float[20], BufferUsageARB.DynamicDraw);
+    ConfigureInstanceLayout(includeColor: true);
 
-    dynamicVbo = Engine.GL.GenBuffer();
-    Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, dynamicVbo);
+    batch2DVao = Engine.GL.GenVertexArray();
+    Engine.GL.BindVertexArray(batch2DVao);
+
+    batch2DVbo = Engine.GL.GenBuffer();
+    Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, batch2DVbo);
+
+    ConfigurePositionColorLayout();
+
+    gridVao = Engine.GL.GenVertexArray();
+    Engine.GL.BindVertexArray(gridVao);
+
+    gridVbo = Engine.GL.GenBuffer();
+    Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, gridVbo);
 
     ConfigurePositionOnlyLayout();
 
@@ -101,6 +144,34 @@ public sealed class OpenGLGraphics : IGraphics
     Engine.GL.EnableVertexAttribArray(0);
   }
 
+  static unsafe void ConfigurePositionColorLayout()
+  {
+    Engine.GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, Batch2DFloatsPerVertex * sizeof(float), (void*)0);
+    Engine.GL.VertexAttribPointer(8, 4, VertexAttribPointerType.Float, false, Batch2DFloatsPerVertex * sizeof(float), (void*)(3 * sizeof(float)));
+    Engine.GL.EnableVertexAttribArray(0);
+    Engine.GL.EnableVertexAttribArray(8);
+  }
+
+  // mat4 at locations 4-7 (one vec4 row each) + optional color at 8, divisor 1 = per-instance.
+  static unsafe void ConfigureInstanceLayout(bool includeColor)
+  {
+    int stride = (includeColor ? 20 : 16) * sizeof(float);
+
+    for (uint row = 0; row < 4; row++)
+    {
+      Engine.GL.VertexAttribPointer(4 + row, 4, VertexAttribPointerType.Float, false, (uint)stride, (void*)(row * 4 * sizeof(float)));
+      Engine.GL.EnableVertexAttribArray(4 + row);
+      Engine.GL.VertexAttribDivisor(4 + row, 1);
+    }
+
+    if (includeColor)
+    {
+      Engine.GL.VertexAttribPointer(8, 4, VertexAttribPointerType.Float, false, (uint)stride, (void*)(16 * sizeof(float)));
+      Engine.GL.EnableVertexAttribArray(8);
+      Engine.GL.VertexAttribDivisor(8, 1);
+    }
+  }
+
   // origin top-left, y down
   public void Resize(int w, int h) => projection = Matrix4x4.CreateOrthographicOffCenter(0, w, h, 0, -1f, 1f);
 
@@ -111,12 +182,16 @@ public sealed class OpenGLGraphics : IGraphics
     Engine.GL.DeleteVertexArray(cubeVao);
     Engine.GL.DeleteBuffer(cubeVbo);
     Engine.GL.DeleteBuffer(cubeEbo);
+    Engine.GL.DeleteBuffer(cubeInstanceVbo);
     Engine.GL.DeleteVertexArray(sphereVao);
     Engine.GL.DeleteBuffer(sphereVbo);
     Engine.GL.DeleteBuffer(sphereTriangleEbo);
     Engine.GL.DeleteBuffer(sphereLineEbo);
-    Engine.GL.DeleteVertexArray(dynamicVao);
-    Engine.GL.DeleteBuffer(dynamicVbo);
+    Engine.GL.DeleteBuffer(sphereInstanceVbo);
+    Engine.GL.DeleteVertexArray(batch2DVao);
+    Engine.GL.DeleteBuffer(batch2DVbo);
+    Engine.GL.DeleteVertexArray(gridVao);
+    Engine.GL.DeleteBuffer(gridVbo);
     fontRenderer.Dispose();
     shader.Dispose();
   }
@@ -129,9 +204,16 @@ public sealed class OpenGLGraphics : IGraphics
     Engine.GL.Clear((uint)(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit));
   }
 
-  public void StartFrame() { /* once you batch, the single flush draw call goes here */ }
+  // Batches flush at EndMode2D/EndMode3D, not here — a frame can hold multiple mode blocks.
+  public void StartFrame()
+  {
+    drawCallCount = 0;
+    fontRenderer.ResetDrawCallCount();
+  }
 
   public void EndFrame() { }
+
+  void CountDrawCall() => drawCallCount++;
 
   #endregion
 
@@ -147,7 +229,13 @@ public sealed class OpenGLGraphics : IGraphics
     Engine.GL.BindVertexArray(vao);
   }
 
-  public void EndMode2D() { }
+  // Fills flush before strokes, so a shape's own border draws over its own fill. Fill/stroke
+  // order across different shapes is not preserved.
+  public void EndMode2D()
+  {
+    FlushFills2D();
+    FlushStrokes2D();
+  }
 
   public void DrawRectangle(float x, float y, float width, float height, RectangleStyle style)
   {
@@ -168,11 +256,12 @@ public sealed class OpenGLGraphics : IGraphics
 
   public void DrawLines(Vector2[] points, Stroke style)
   {
-    UploadDynamic(ShapeGeometry.ToVertexData(points));
-    shader.SetMatrix("uModel", Matrix4x4.Identity);
-    shader.SetColor("uColor", style.Color);
-    Engine.GL.LineWidth(style.Width);
-    Engine.GL.DrawArrays(PrimitiveType.LineStrip, 0, (uint)points.Length);
+    List<float> group = GetLineGroup(style.Width);
+    for (int i = 0; i < points.Length - 1; i++)
+    {
+      AppendLineVertex(group, points[i], style.Color);
+      AppendLineVertex(group, points[i + 1], style.Color);
+    }
   }
 
   public void DrawCircle(float centerX, float centerY, float radius, CircleStyle style)
@@ -201,38 +290,107 @@ public sealed class OpenGLGraphics : IGraphics
     shader.SetMatrix("uModel", model);
     shader.SetColor("uColor", Color.White);
     Engine.GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
+    CountDrawCall();
     shader.SetBool("uTextured", false);
     Engine.GL.Disable(EnableCap.Blend);
   }
 
-  // Renders a filled triangle fan and/or a line-loop border around the same point ring —
+  // Queues a filled triangle fan and/or a line-loop border around the same point ring —
   // the shared path behind both rounded rectangles and circles.
   void DrawPolygon(Vector2 center, Vector2[] ring, Color? fill, Stroke? border)
   {
-    Engine.GL.BindVertexArray(dynamicVao);
-
     if (fill != null)
     {
-      UploadDynamic(ShapeGeometry.ToFanVertexData(center, ring));
-      shader.SetMatrix("uModel", Matrix4x4.Identity);
-      shader.SetColor("uColor", fill);
-      Engine.GL.DrawArrays(PrimitiveType.TriangleFan, 0, (uint)(ring.Length + 2));
+      for (int i = 0; i < ring.Length; i++)
+      {
+        Vector2 next = ring[(i + 1) % ring.Length];
+        AppendFillVertex(center, fill);
+        AppendFillVertex(ring[i], fill);
+        AppendFillVertex(next, fill);
+      }
     }
 
     if (border != null)
     {
-      UploadDynamic(ShapeGeometry.ToVertexData(ring));
-      shader.SetMatrix("uModel", Matrix4x4.Identity);
-      shader.SetColor("uColor", border.Color);
-      Engine.GL.LineWidth(border.Width);
-      Engine.GL.DrawArrays(PrimitiveType.LineLoop, 0, (uint)ring.Length);
+      List<float> group = GetLineGroup(border.Width);
+      for (int i = 0; i < ring.Length; i++)
+      {
+        Vector2 next = ring[(i + 1) % ring.Length];
+        AppendLineVertex(group, ring[i], border.Color);
+        AppendLineVertex(group, next, border.Color);
+      }
     }
   }
 
-  void UploadDynamic(float[] vertices)
+  void AppendFillVertex(Vector2 p, Color c)
   {
-    Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, dynamicVbo);
-    Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, vertices, BufferUsageARB.DynamicDraw);
+    pendingFillVertices.Add(p.X);
+    pendingFillVertices.Add(p.Y);
+    pendingFillVertices.Add(0f);
+    pendingFillVertices.Add(c.R / 255f);
+    pendingFillVertices.Add(c.G / 255f);
+    pendingFillVertices.Add(c.B / 255f);
+    pendingFillVertices.Add(c.A / 255f);
+  }
+
+  List<float> GetLineGroup(float width)
+  {
+    if (!pendingLinesByWidth.TryGetValue(width, out List<float>? group))
+    {
+      group = [];
+      pendingLinesByWidth[width] = group;
+    }
+    return group;
+  }
+
+  static void AppendLineVertex(List<float> group, Vector2 p, Color c)
+  {
+    group.Add(p.X);
+    group.Add(p.Y);
+    group.Add(0f);
+    group.Add(c.R / 255f);
+    group.Add(c.G / 255f);
+    group.Add(c.B / 255f);
+    group.Add(c.A / 255f);
+  }
+
+  void FlushFills2D()
+  {
+    if (pendingFillVertices.Count == 0) return;
+
+    Engine.GL.BindVertexArray(batch2DVao);
+    Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, batch2DVbo);
+    Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, CollectionsMarshal.AsSpan(pendingFillVertices), BufferUsageARB.DynamicDraw);
+
+    shader.SetMatrix("uModel", Matrix4x4.Identity);
+    shader.SetBool("uUseVertexColor", true);
+    Engine.GL.DrawArrays(PrimitiveType.Triangles, 0, (uint)(pendingFillVertices.Count / Batch2DFloatsPerVertex));
+    CountDrawCall();
+    shader.SetBool("uUseVertexColor", false);
+
+    pendingFillVertices.Clear();
+  }
+
+  // LineWidth is GL state, not per-vertex, so strokes are grouped by width.
+  void FlushStrokes2D()
+  {
+    if (pendingLinesByWidth.Count == 0) return;
+
+    Engine.GL.BindVertexArray(batch2DVao);
+    Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, batch2DVbo);
+    shader.SetMatrix("uModel", Matrix4x4.Identity);
+    shader.SetBool("uUseVertexColor", true);
+
+    foreach ((float width, List<float> vertices) in pendingLinesByWidth)
+    {
+      Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, CollectionsMarshal.AsSpan(vertices), BufferUsageARB.DynamicDraw);
+      Engine.GL.LineWidth(width);
+      Engine.GL.DrawArrays(PrimitiveType.Lines, 0, (uint)(vertices.Count / Batch2DFloatsPerVertex));
+      CountDrawCall();
+    }
+
+    shader.SetBool("uUseVertexColor", false);
+    pendingLinesByWidth.Clear();
   }
 
   #endregion
@@ -249,39 +407,79 @@ public sealed class OpenGLGraphics : IGraphics
     Engine.GL.BindVertexArray(vao);
   }
 
-  public void EndMode3D() => Engine.GL.Disable(EnableCap.DepthTest);
+  public void EndMode3D()
+  {
+    FlushCubes();
+    FlushSpheres();
+    FlushMeshInstances();
+    Engine.GL.Disable(EnableCap.DepthTest);
+  }
 
   public void DrawCube(Cube cube, CubeStyle style)
   {
-    Engine.GL.BindVertexArray(cubeVao);
-    shader.SetMatrix("uModel", cube.GetRenderMatrix());
+    Matrix4x4 model = cube.GetRenderMatrix();
 
     if (style.Wireframe)
     {
-      shader.SetColor("uColor", style.Color);
-      Engine.GL.LineWidth(style.Width);
-      unsafe
-      {
-        Engine.GL.DrawElements(PrimitiveType.LineLoop, Cube.IndexCount, DrawElementsType.UnsignedInt, (void*)0);
-      }
+      GetInstanceGroup(pendingCubeWireframe, style.Width).Add(new InstanceData(model, ToVector4(style.Color)));
       return;
     }
 
-    shader.SetColor("uColor", style.Color);
-    unsafe
-    {
-      Engine.GL.DrawElements(PrimitiveType.Triangles, Cube.IndexCount, DrawElementsType.UnsignedInt, (void*)0);
-    }
+    pendingCubeFill.Add(new InstanceData(model, ToVector4(style.Color)));
 
     if (style.Border != null)
     {
-      shader.SetColor("uColor", style.Border.Color);
-      Engine.GL.LineWidth(style.Border.Width);
-      unsafe
-      {
-        Engine.GL.DrawElements(PrimitiveType.LineLoop, Cube.IndexCount, DrawElementsType.UnsignedInt, (void*)0);
-      }
+      GetInstanceGroup(pendingCubeBorder, style.Border.Width).Add(new InstanceData(model, ToVector4(style.Border.Color)));
     }
+  }
+
+  static Vector4 ToVector4(Color c) => new(c.R / 255f, c.G / 255f, c.B / 255f, c.A / 255f);
+
+  static List<InstanceData> GetInstanceGroup(Dictionary<float, List<InstanceData>> groups, float key)
+  {
+    if (!groups.TryGetValue(key, out List<InstanceData>? group))
+    {
+      group = [];
+      groups[key] = group;
+    }
+    return group;
+  }
+
+  void FlushCubes()
+  {
+    Engine.GL.BindVertexArray(cubeVao);
+    DrawCubeInstances(pendingCubeFill, PrimitiveType.Triangles, null);
+    pendingCubeFill.Clear();
+
+    foreach ((float width, List<InstanceData> instances) in pendingCubeWireframe)
+    {
+      DrawCubeInstances(instances, PrimitiveType.LineLoop, width);
+    }
+    pendingCubeWireframe.Clear();
+
+    foreach ((float width, List<InstanceData> instances) in pendingCubeBorder)
+    {
+      DrawCubeInstances(instances, PrimitiveType.LineLoop, width);
+    }
+    pendingCubeBorder.Clear();
+  }
+
+  unsafe void DrawCubeInstances(List<InstanceData> instances, PrimitiveType primitiveType, float? lineWidth)
+  {
+    if (instances.Count == 0) return;
+
+    Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, cubeInstanceVbo);
+    Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, MemoryMarshal.Cast<InstanceData, float>(CollectionsMarshal.AsSpan(instances)), BufferUsageARB.DynamicDraw);
+
+    shader.SetBool("uInstancedTransform", true);
+    shader.SetBool("uUseVertexColor", true);
+    if (lineWidth is float width) Engine.GL.LineWidth(width);
+
+    Engine.GL.DrawElementsInstanced(primitiveType, Cube.IndexCount, DrawElementsType.UnsignedInt, (void*)0, (uint)instances.Count);
+    CountDrawCall();
+
+    shader.SetBool("uInstancedTransform", false);
+    shader.SetBool("uUseVertexColor", false);
   }
 
   public void DrawDebugGrid(int xRows, int zColumns, float cellSize)
@@ -306,12 +504,14 @@ public sealed class OpenGLGraphics : IGraphics
       offset = WriteVertex(vertices, offset, halfWidth, 0f, z);
     }
 
-    Engine.GL.BindVertexArray(dynamicVao);
-    UploadDynamic(vertices);
+    Engine.GL.BindVertexArray(gridVao);
+    Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, gridVbo);
+    Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, vertices, BufferUsageARB.DynamicDraw);
     shader.SetMatrix("uModel", Matrix4x4.Identity);
     shader.SetColor("uColor", Color.Gray);
     Engine.GL.LineWidth(1f);
     Engine.GL.DrawArrays(PrimitiveType.Lines, 0, (uint)(vertices.Length / 3));
+    CountDrawCall();
   }
 
   static int WriteVertex(float[] vertices, int offset, float x, float y, float z)
@@ -324,54 +524,81 @@ public sealed class OpenGLGraphics : IGraphics
 
   public void DrawSphere(Sphere sphere, SphereStyle style)
   {
-    Engine.GL.BindVertexArray(sphereVao);
-    shader.SetMatrix("uModel", sphere.GetRenderMatrix());
+    Matrix4x4 model = sphere.GetRenderMatrix();
 
     if (style.Wireframe)
     {
-      Engine.GL.BindBuffer(BufferTargetARB.ElementArrayBuffer, sphereLineEbo);
-      shader.SetColor("uColor", style.Color);
-      Engine.GL.LineWidth(style.Width);
-      unsafe
-      {
-        Engine.GL.DrawElements(PrimitiveType.Lines, Sphere.LineIndexCount, DrawElementsType.UnsignedInt, (void*)0);
-      }
+      GetInstanceGroup(pendingSphereWireframe, style.Width).Add(new InstanceData(model, ToVector4(style.Color)));
       return;
     }
 
-    Engine.GL.BindBuffer(BufferTargetARB.ElementArrayBuffer, sphereTriangleEbo);
-    shader.SetColor("uColor", style.Color);
-    unsafe
-    {
-      Engine.GL.DrawElements(PrimitiveType.Triangles, Sphere.TriangleIndexCount, DrawElementsType.UnsignedInt, (void*)0);
-    }
+    pendingSphereFill.Add(new InstanceData(model, ToVector4(style.Color)));
 
     if (style.Border != null)
     {
-      Engine.GL.BindBuffer(BufferTargetARB.ElementArrayBuffer, sphereLineEbo);
-      shader.SetColor("uColor", style.Border.Color);
-      Engine.GL.LineWidth(style.Border.Width);
-      unsafe
-      {
-        Engine.GL.DrawElements(PrimitiveType.Lines, Sphere.LineIndexCount, DrawElementsType.UnsignedInt, (void*)0);
-      }
+      GetInstanceGroup(pendingSphereBorder, style.Border.Width).Add(new InstanceData(model, ToVector4(style.Border.Color)));
     }
   }
 
+  void FlushSpheres()
+  {
+    Engine.GL.BindVertexArray(sphereVao);
+
+    Engine.GL.BindBuffer(BufferTargetARB.ElementArrayBuffer, sphereTriangleEbo);
+    DrawSphereInstances(pendingSphereFill, PrimitiveType.Triangles, Sphere.TriangleIndexCount, null);
+    pendingSphereFill.Clear();
+
+    Engine.GL.BindBuffer(BufferTargetARB.ElementArrayBuffer, sphereLineEbo);
+    foreach ((float width, List<InstanceData> instances) in pendingSphereWireframe)
+    {
+      DrawSphereInstances(instances, PrimitiveType.Lines, Sphere.LineIndexCount, width);
+    }
+    pendingSphereWireframe.Clear();
+
+    foreach ((float width, List<InstanceData> instances) in pendingSphereBorder)
+    {
+      DrawSphereInstances(instances, PrimitiveType.Lines, Sphere.LineIndexCount, width);
+    }
+    pendingSphereBorder.Clear();
+  }
+
+  unsafe void DrawSphereInstances(List<InstanceData> instances, PrimitiveType primitiveType, uint indexCount, float? lineWidth)
+  {
+    if (instances.Count == 0) return;
+
+    Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, sphereInstanceVbo);
+    Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, MemoryMarshal.Cast<InstanceData, float>(CollectionsMarshal.AsSpan(instances)), BufferUsageARB.DynamicDraw);
+
+    shader.SetBool("uInstancedTransform", true);
+    shader.SetBool("uUseVertexColor", true);
+    if (lineWidth is float width) Engine.GL.LineWidth(width);
+
+    Engine.GL.DrawElementsInstanced(primitiveType, indexCount, DrawElementsType.UnsignedInt, (void*)0, (uint)instances.Count);
+    CountDrawCall();
+
+    shader.SetBool("uInstancedTransform", false);
+    shader.SetBool("uUseVertexColor", false);
+  }
+
+  // Skinned meshes draw immediately since bone matrices vary per instance. Non-skinned meshes
+  // are queued and instanced at EndMode3D.
   public void DrawModel(Model model, Matrix4x4 worldMatrix, Matrix4x4[] boneMatrices)
   {
     foreach (Mesh mesh in model.Meshes)
     {
+      bool skinned = mesh.IsSkinned && boneMatrices.Length > 0;
+
+      if (!skinned)
+      {
+        GetMeshGroup(mesh).Add(mesh.NodeTransform * worldMatrix);
+        continue;
+      }
+
       Engine.GL.BindVertexArray(mesh.Vao);
       shader.SetMatrix("uModel", mesh.NodeTransform * worldMatrix);
       shader.SetColor("uColor", Color.White);
-
-      bool skinned = mesh.IsSkinned && boneMatrices.Length > 0;
-      shader.SetBool("uSkinned", skinned);
-      if (skinned)
-      {
-        shader.SetMatrixArray("uBones", boneMatrices);
-      }
+      shader.SetBool("uSkinned", true);
+      shader.SetMatrixArray("uBones", boneMatrices);
 
       if (mesh.Texture != null)
       {
@@ -385,13 +612,52 @@ public sealed class OpenGLGraphics : IGraphics
       {
         Engine.GL.DrawElements(PrimitiveType.Triangles, mesh.IndexCount, DrawElementsType.UnsignedInt, (void*)0);
       }
+      CountDrawCall();
 
       shader.SetBool("uTextured", false);
-      if (skinned)
-      {
-        shader.SetBool("uSkinned", false);
-      }
+      shader.SetBool("uSkinned", false);
     }
+  }
+
+  List<Matrix4x4> GetMeshGroup(Mesh mesh)
+  {
+    if (!pendingMeshInstances.TryGetValue(mesh, out List<Matrix4x4>? group))
+    {
+      group = [];
+      pendingMeshInstances[mesh] = group;
+    }
+    return group;
+  }
+
+  unsafe void FlushMeshInstances()
+  {
+    if (pendingMeshInstances.Count == 0) return;
+
+    shader.SetColor("uColor", Color.White);
+    shader.SetBool("uInstancedTransform", true);
+
+    foreach ((Mesh mesh, List<Matrix4x4> transforms) in pendingMeshInstances)
+    {
+      Engine.GL.BindVertexArray(mesh.Vao);
+      Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, mesh.InstanceVbo);
+      Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, MemoryMarshal.Cast<Matrix4x4, float>(CollectionsMarshal.AsSpan(transforms)), BufferUsageARB.DynamicDraw);
+
+      if (mesh.Texture != null)
+      {
+        Engine.GL.ActiveTexture(TextureUnit.Texture0);
+        Engine.GL.BindTexture(TextureTarget.Texture2D, mesh.Texture.Handle);
+        shader.SetInt("uTexture", 0);
+        shader.SetBool("uTextured", true);
+      }
+
+      Engine.GL.DrawElementsInstanced(PrimitiveType.Triangles, mesh.IndexCount, DrawElementsType.UnsignedInt, (void*)0, (uint)transforms.Count);
+      CountDrawCall();
+
+      shader.SetBool("uTextured", false);
+    }
+
+    shader.SetBool("uInstancedTransform", false);
+    pendingMeshInstances.Clear();
   }
 
   #endregion

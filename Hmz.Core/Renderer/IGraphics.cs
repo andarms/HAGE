@@ -13,6 +13,9 @@ public interface IGraphics : IDisposable
   void EndFrame();
   void Resize(int width, int height);
 
+  // GL draw calls in the last completed frame; resets on StartFrame.
+  int DrawCallCount { get; }
+
   #region 2D Drawing
 
   void StartMode2D(Camera2D camera);

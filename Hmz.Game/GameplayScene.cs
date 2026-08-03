@@ -62,7 +62,7 @@ public sealed class GameplayScene : Scene
     Engine.Graphics.DrawDebugGrid(40, 40, 1f);
     Engine.Graphics.EndMode3D();
 
-    Engine.Graphics.DrawText($"FPS: {Performance.FPS}", 10f, 10f, new TextStyle
+    Engine.Graphics.DrawText($"FPS: {Performance.FPS} | Draws: {Engine.Graphics.DrawCallCount}", 10f, 10f, new TextStyle
     {
       Color = Color.White,
       FontSize = 32f,

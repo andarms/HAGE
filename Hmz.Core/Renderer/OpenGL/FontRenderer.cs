@@ -3,6 +3,7 @@ using FontStashSharp.Interfaces;
 using Hmz.Core.Content;
 using Silk.NET.OpenGL;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using TextStyle = Hmz.Core.Renderer.Styles.TextStyle;
 
 namespace Hmz.Core.Renderer.OpenGL;
@@ -16,6 +17,15 @@ sealed class FontRenderer : IFontStashRenderer2, ITexture2DManager, IDisposable
   readonly uint textVao, textVbo;
   readonly Font defaultFont;
 
+  // Glyph quads for the current DrawText call, flushed as one draw.
+  readonly List<float> pendingVertices = [];
+  object? pendingTexture;
+
+  const int FloatsPerVertex = 9; // pos(3) + texcoord(2) + color(4)
+
+  public int DrawCallCount { get; private set; }
+  public void ResetDrawCallCount() => DrawCallCount = 0;
+
   public FontRenderer(Shader shader)
   {
     this.shader = shader;
@@ -24,7 +34,7 @@ sealed class FontRenderer : IFontStashRenderer2, ITexture2DManager, IDisposable
     defaultFontSystem.AddFont(EmbeddedResources.ReadBytes("Hmz.Core.Resources.Fonts.monogram-extended.ttf"));
     defaultFont = new Font(defaultFontSystem);
 
-    // Position + texcoord, re-buffered per glyph quad.
+    // Position + texcoord + color.
     textVao = Engine.GL.GenVertexArray();
     Engine.GL.BindVertexArray(textVao);
 
@@ -33,11 +43,13 @@ sealed class FontRenderer : IFontStashRenderer2, ITexture2DManager, IDisposable
 
     unsafe
     {
-      Engine.GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 5 * sizeof(float), (void*)0);
-      Engine.GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+      Engine.GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, FloatsPerVertex * sizeof(float), (void*)0);
+      Engine.GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, FloatsPerVertex * sizeof(float), (void*)(3 * sizeof(float)));
+      Engine.GL.VertexAttribPointer(8, 4, VertexAttribPointerType.Float, false, FloatsPerVertex * sizeof(float), (void*)(5 * sizeof(float)));
     }
     Engine.GL.EnableVertexAttribArray(0);
     Engine.GL.EnableVertexAttribArray(1);
+    Engine.GL.EnableVertexAttribArray(8);
   }
 
   public void Dispose()
@@ -64,6 +76,7 @@ sealed class FontRenderer : IFontStashRenderer2, ITexture2DManager, IDisposable
     shader.SetMatrix("uModel", Matrix4x4.Identity);
     shader.SetInt("uTexture", 0);
     shader.SetBool("uTextured", true);
+    shader.SetBool("uUseVertexColor", true);
 
     if (style.Outline != null)
     {
@@ -86,8 +99,29 @@ sealed class FontRenderer : IFontStashRenderer2, ITexture2DManager, IDisposable
 
     font.DrawText(this, text, new Vector2(x, y), ToFSColor(style.Color));
 
+    FlushPending();
+
+    shader.SetBool("uUseVertexColor", false);
     shader.SetBool("uTextured", false);
     Engine.GL.Disable(EnableCap.Blend);
+  }
+
+  void FlushPending()
+  {
+    if (pendingVertices.Count == 0) return;
+
+    Engine.GL.BindVertexArray(textVao);
+    Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, textVbo);
+    Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, CollectionsMarshal.AsSpan(pendingVertices), BufferUsageARB.DynamicDraw);
+
+    Engine.GL.ActiveTexture(TextureUnit.Texture0);
+    Engine.GL.BindTexture(TextureTarget.Texture2D, ((Texture2D)pendingTexture!).Handle);
+
+    Engine.GL.DrawArrays(PrimitiveType.Triangles, 0, (uint)(pendingVertices.Count / FloatsPerVertex));
+    DrawCallCount++;
+
+    pendingVertices.Clear();
+    pendingTexture = null;
   }
 
   static FSColor ToFSColor(Color c) => new(c.R, c.G, c.B, c.A);
@@ -130,27 +164,35 @@ sealed class FontRenderer : IFontStashRenderer2, ITexture2DManager, IDisposable
   void IFontStashRenderer2.DrawQuad(object texture, ref VertexPositionColorTexture topLeft, ref VertexPositionColorTexture topRight,
     ref VertexPositionColorTexture bottomLeft, ref VertexPositionColorTexture bottomRight)
   {
+    // Flush before switching textures so each draw call samples only one texture.
+    if (pendingTexture != null && !ReferenceEquals(pendingTexture, texture))
+    {
+      FlushPending();
+    }
+    pendingTexture = texture;
+
     // FontStashSharp bakes the requested draw color into each vertex rather than a uniform;
     // all four corners of a glyph quad share the same color, so any one of them will do.
-    shader.SetColor("uColor", new Color(topLeft.Color.R, topLeft.Color.G, topLeft.Color.B, topLeft.Color.A));
+    float r = topLeft.Color.R / 255f, g = topLeft.Color.G / 255f, b = topLeft.Color.B / 255f, a = topLeft.Color.A / 255f;
 
-    float[] vertices =
-    [
-      topLeft.Position.X, topLeft.Position.Y, topLeft.Position.Z, topLeft.TextureCoordinate.X, topLeft.TextureCoordinate.Y,
-      bottomLeft.Position.X, bottomLeft.Position.Y, bottomLeft.Position.Z, bottomLeft.TextureCoordinate.X, bottomLeft.TextureCoordinate.Y,
-      topRight.Position.X, topRight.Position.Y, topRight.Position.Z, topRight.TextureCoordinate.X, topRight.TextureCoordinate.Y,
-      topRight.Position.X, topRight.Position.Y, topRight.Position.Z, topRight.TextureCoordinate.X, topRight.TextureCoordinate.Y,
-      bottomLeft.Position.X, bottomLeft.Position.Y, bottomLeft.Position.Z, bottomLeft.TextureCoordinate.X, bottomLeft.TextureCoordinate.Y,
-      bottomRight.Position.X, bottomRight.Position.Y, bottomRight.Position.Z, bottomRight.TextureCoordinate.X, bottomRight.TextureCoordinate.Y,
-    ];
+    AppendVertex(topLeft, r, g, b, a);
+    AppendVertex(bottomLeft, r, g, b, a);
+    AppendVertex(topRight, r, g, b, a);
+    AppendVertex(topRight, r, g, b, a);
+    AppendVertex(bottomLeft, r, g, b, a);
+    AppendVertex(bottomRight, r, g, b, a);
+  }
 
-    Engine.GL.BindVertexArray(textVao);
-    Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, textVbo);
-    Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, vertices, BufferUsageARB.DynamicDraw);
-
-    Engine.GL.ActiveTexture(TextureUnit.Texture0);
-    Engine.GL.BindTexture(TextureTarget.Texture2D, ((Texture2D)texture).Handle);
-
-    Engine.GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
+  void AppendVertex(VertexPositionColorTexture v, float r, float g, float b, float a)
+  {
+    pendingVertices.Add(v.Position.X);
+    pendingVertices.Add(v.Position.Y);
+    pendingVertices.Add(v.Position.Z);
+    pendingVertices.Add(v.TextureCoordinate.X);
+    pendingVertices.Add(v.TextureCoordinate.Y);
+    pendingVertices.Add(r);
+    pendingVertices.Add(g);
+    pendingVertices.Add(b);
+    pendingVertices.Add(a);
   }
 }
