@@ -10,30 +10,36 @@ namespace Hmz.Game;
 
 public sealed class GameplayScene : Scene
 {
-  readonly Camera3D camera = new()
-  {
-    Position = new(0f, 8f, 9f),
-    Target = Vector3.Zero,
-    Up = Vector3.UnitY,
-    FieldOfView = MathF.PI / 4f,
-  };
+  static readonly Vector3 CameraOffset = new(0f, 8f, 10f);
+  const float CameraFollowSpeed = 4f;
+
   int displayMode;
+  Player.Player player;
 
   public override void Initialize()
   {
     base.Initialize();
-    camera.AspectRatio = Engine.Viewport.AspectRatio;
-    Player.Player player = new();
+    Engine.MainCamera.AspectRatio = Engine.Viewport.AspectRatio;
+    Engine.MainCamera.NearPlane = 0.1f;
+    Engine.MainCamera.FarPlane = 1000f;
+    Engine.MainCamera.Position = CameraOffset;
+    Engine.MainCamera.Target = Vector3.Zero;
+    Engine.MainCamera.Up = Vector3.UnitY;
+    Engine.MainCamera.FieldOfView = MathF.PI / 4f;
+
+    player = new Player.Player();
     Instances.Add(player);
     Tree tree = new();
     Instances.Add(tree);
-    Trigger trigger = new();
+    Crate trigger = new();
     Instances.Add(trigger);
   }
 
   public override void Update(float dt)
   {
     base.Update(dt);
+
+    Engine.MainCamera.Follow(player.Transform.Position, CameraOffset, CameraFollowSpeed, dt);
 
     if (Engine.Input.IsKeyJustPressed(Hmz.Core.Input.Key.F4))
     {
@@ -57,7 +63,7 @@ public sealed class GameplayScene : Scene
 
   public override void Draw()
   {
-    Engine.Graphics.StartMode3D(camera);
+    Engine.Graphics.StartMode3D(Engine.MainCamera);
     base.Draw();
     Engine.Graphics.DrawDebugGrid(40, 40, 1f);
     Engine.Graphics.EndMode3D();

@@ -64,6 +64,9 @@ public class Transform
     };
   }
 
-  public Matrix4x4 GetLocalMatrix() =>
-    Matrix4x4.CreateScale(Scale) * Matrix4x4.CreateFromQuaternion(Rotation) * Matrix4x4.CreateTranslation(Position);
+  public Matrix4x4 GetLocalMatrix()
+  {
+    return Matrix4x4.CreateScale(Scale) * Matrix4x4.CreateFromQuaternion(Rotation) * Matrix4x4.CreateTranslation(Position);
+  }
+
 }

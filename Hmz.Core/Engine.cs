@@ -1,3 +1,4 @@
+using Hmz.Core._3D;
 using Hmz.Core.Collisions;
 using Hmz.Core.Content;
 using Hmz.Core.Hosting;
@@ -29,6 +30,7 @@ public static class Engine
   public static ContentManager Content { get; } = new();
   public static CollisionsManager Collisions { get; } = new();
   public static bool DebugMode { get; set; } = false;
+  public static Camera3D MainCamera { get; set; } = new Camera3D();
 
   public static void Initialize()
   {

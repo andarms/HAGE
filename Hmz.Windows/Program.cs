@@ -7,8 +7,8 @@ GameHost host = new(
   new GameOptions
   {
     Title = "Hamaze is fun",
-    Width = 640,
-    Height = 480,
+    Width = 1280,
+    Height = 720,
     TargetFps = 120,
   },
   new WindowsPlatformWindowService()

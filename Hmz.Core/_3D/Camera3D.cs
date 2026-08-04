@@ -25,6 +25,13 @@ public class Camera3D
     Target += Vector3.Normalize(direction) * amount;
   }
 
+  public void Follow(Vector3 targetPosition, Vector3 offset, float speed, float dt)
+  {
+    float t = MathF.Min(speed * dt, 1f);
+    Position = Vector3.Lerp(Position, targetPosition + offset, t);
+    Target = Vector3.Lerp(Target, targetPosition, t);
+  }
+
   public void Rotate(float yaw, float pitch)
   {
     Vector3 direction = Target - Position;

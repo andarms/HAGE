@@ -34,8 +34,6 @@ public class GameObject
     }
   }
 
-  // Bumped whenever the cached world matrix is recomputed, so a child can tell its parent's
-  // world transform changed without recomputing the whole ancestor chain itself.
   internal int WorldVersion
   {
     get
@@ -119,8 +117,6 @@ public class GameObject
 
   public virtual void Draw()
   {
-    // 3D visibility is resolved by the depth buffer, so only DrawOrder controls sequencing
-    // here (e.g. grouping for batching), not a 2D-style Y-sort.
     foreach (GameObject child in Children.OrderBy(i => i.DrawOrder))
     {
       child.Draw();
