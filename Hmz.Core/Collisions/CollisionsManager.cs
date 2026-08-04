@@ -53,8 +53,8 @@ public class CollisionsManager
     if (sourceCollider?.IsActive != true || otherCollider?.IsActive != true) return false;
     if (!CanPair(sourceCollider, otherCollider)) return false;
 
-    var sourceBounds = sourceCollider.Bounds(source.Transform.Position);
-    var otherBounds = otherCollider.Bounds(other.Transform.Position);
+    var sourceBounds = sourceCollider.Bounds(source.GlobalPosition);
+    var otherBounds = otherCollider.Bounds(other.GlobalPosition);
 
     if (!sourceBounds.Intersects(otherBounds)) return false;
 
@@ -92,7 +92,7 @@ public class CollisionsManager
       if (otherCollider?.IsActive != true || otherCollider.Type != CollisionType.Solid) continue;
       if (!CanPair(sourceCollider, otherCollider)) continue;
 
-      var otherBounds = otherCollider.Bounds(other.Transform.Position);
+      var otherBounds = otherCollider.Bounds(other.GlobalPosition);
       if (!bounds.Intersects(otherBounds)) continue;
 
       var correction = movement > 0
@@ -116,7 +116,7 @@ public class CollisionsManager
       if (!obj.IsActive || obj.Collider?.IsActive != true) continue;
 
       activeObjects.Add(obj);
-      activeBounds.Add(obj.Collider.Bounds(obj.Transform.Position));
+      activeBounds.Add(obj.Collider.Bounds(obj.GlobalPosition));
     }
 
     foreach (var obj in activeObjects)
@@ -160,7 +160,7 @@ public class CollisionsManager
       {
         if (other.Collider is not { } otherCollider) continue;
 
-        var side = GetCollisionSide(sourceBounds, otherCollider.Bounds(other.Transform.Position));
+        var side = GetCollisionSide(sourceBounds, otherCollider.Bounds(other.GlobalPosition));
         var collision = new Collision(objectA, other, side);
 
         if (previous.Contains(other))
@@ -196,7 +196,7 @@ public class CollisionsManager
     {
       if (ReferenceEquals(obj, target) || !obj.IsActive || obj.Collider?.IsActive != true) continue;
       if (targetCollider != null && !CanPair(targetCollider, obj.Collider)) continue;
-      if (obj.Collider.Bounds(obj.Transform.Position).Intersects(area)) collisions.Add(obj);
+      if (obj.Collider.Bounds(obj.GlobalPosition).Intersects(area)) collisions.Add(obj);
     }
 
     return collisions;

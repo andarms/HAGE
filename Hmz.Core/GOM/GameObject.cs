@@ -74,6 +74,16 @@ public class GameObject
 
   public Vector3 GlobalPosition => Vector3.Transform(Vector3.Zero, WorldMatrix);
 
+  public Vector3 Forward
+  {
+    get
+    {
+      Vector3 direction = Vector3.TransformNormal(Vector3.UnitZ, Matrix4x4.CreateFromQuaternion(Transform.Rotation));
+      direction.Y = 0f;
+      return Vector3.Normalize(direction);
+    }
+  }
+
   public bool IsActive { get; protected set; } = true;
 
   public int DrawOrder { get; set; }
