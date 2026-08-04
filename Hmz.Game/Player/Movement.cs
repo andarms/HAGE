@@ -4,7 +4,7 @@ using Hmz.Core.GOM;
 
 namespace Hmz.Game.Player;
 
-public class Movement : Component
+public class Movement(PlayerContext context) : Component
 {
   public float Speed { get; set; } = 5f;
   public float RotationSpeed { get; set; } = 10f;
@@ -15,18 +15,27 @@ public class Movement : Component
   {
     direction = Vector3.Zero;
 
-    if (Engine.Input.IsActionPressed("move_up")) direction.Z -= 1f;
-    if (Engine.Input.IsActionPressed("move_down")) direction.Z += 1f;
-    if (Engine.Input.IsActionPressed("move_left")) direction.X -= 1f;
-    if (Engine.Input.IsActionPressed("move_right")) direction.X += 1f;
+    if (context.InputEnabled)
+    {
+      if (Engine.Input.IsActionPressed("move_up")) direction.Z -= 1f;
+      if (Engine.Input.IsActionPressed("move_down")) direction.Z += 1f;
+      if (Engine.Input.IsActionPressed("move_left")) direction.X -= 1f;
+      if (Engine.Input.IsActionPressed("move_right")) direction.X += 1f;
 
-    if (direction != Vector3.Zero) direction = Vector3.Normalize(direction);
+      if (direction != Vector3.Zero) direction = Vector3.Normalize(direction);
+    }
+
+    context.IsMoving = direction != Vector3.Zero;
   }
 
   public override void Update(float dt)
   {
+    Move(dt);
+  }
+
+  void Move(float dt)
+  {
     Vector3 currentDirection = direction;
-    direction = Vector3.Zero;
 
     if (currentDirection == Vector3.Zero) return;
 

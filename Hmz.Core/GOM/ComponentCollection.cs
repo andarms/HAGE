@@ -74,6 +74,7 @@ public class ComponentCollection(GameObject owner) : IReadOnlyComponentCollectio
 
   public void Initialize()
   {
+    Flush();
     foreach (Component component in components.Values)
     {
       component.Initialize();

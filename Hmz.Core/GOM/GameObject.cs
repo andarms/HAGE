@@ -104,6 +104,8 @@ public class GameObject
   {
     if (Collider != null) Engine.Collisions.Register(this);
 
+    Components.Initialize();
+
     foreach (GameObject child in Children)
     {
       child.Initialize();
