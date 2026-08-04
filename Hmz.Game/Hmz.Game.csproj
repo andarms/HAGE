@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Hmz.Core\Hmz.Core.csproj" />
+    <ProjectReference Include="..\Hmz.Editor\Hmz.Editor.csproj" />
   </ItemGroup>
 
   <ItemGroup>

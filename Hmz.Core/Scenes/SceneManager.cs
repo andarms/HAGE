@@ -6,6 +6,10 @@ public class SceneManager
 {
   Scene? current = null;
   public Scene? Current => current;
+
+  // The scene directly beneath Current, e.g. the gameplay scene paused behind the editor overlay.
+  public Scene? Below => sceneStack.Count > 0 ? sceneStack.Peek() : null;
+
   Scene? nextScene = null;
   Scene? startScene = null;
 
@@ -26,14 +30,19 @@ public class SceneManager
     Current?.Initialize();
   }
 
-  internal void HandleInput()
-  {
-    Current?.HandleInput();
-  }
-
   public void Update(float dt)
   {
+    // Stacked scenes keep updating (so animation/state behind an overlay like the
+    // editor stays live), but only one scene reads input each frame: the current
+    // scene if it wants input, otherwise the nearest scene below it that does.
+    foreach (var scene in sceneStack)
+    {
+      scene.Update(dt);
+    }
+
+    GetInputScene()?.HandleInput();
     Current?.Update(dt);
+
     if (nextScene != null && current != null && !current.IsBusy())
     {
       current?.Terminate();
@@ -83,9 +92,10 @@ public class SceneManager
     startScene = Get<T>();
   }
 
-  public void Push<T>() where T : Scene
+  public void Push<T>(bool captureInput = true) where T : Scene
   {
     Scene newScene = Get<T>();
+    newScene.InputEnabled = captureInput;
     if (current != null)
     {
       current.Pause();
@@ -130,5 +140,20 @@ public class SceneManager
       throw new IndexOutOfRangeException($"Scene of {typeof(T)} doesn't exint in avialbes scenes");
     }
     return scene;
+  }
+
+  // Walks from the current scene down through the stack and returns the first one
+  // that wants input, so a scene pushed with captureInput:false lets input pass
+  // through to whatever is beneath it.
+  Scene? GetInputScene()
+  {
+    if (current != null && current.InputEnabled) return current;
+
+    foreach (var scene in sceneStack)
+    {
+      if (scene.InputEnabled) return scene;
+    }
+
+    return null;
   }
 }

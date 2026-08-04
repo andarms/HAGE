@@ -1,6 +1,7 @@
 using Hmz.Core;
 using Hmz.Core.Hosting;
 using Hmz.Core.Input;
+using Hmz.Editor;
 
 namespace Hmz.Game;
 
@@ -10,9 +11,26 @@ public class UntitledGame : Core.Hosting.Game
   {
     MapActions();
     Engine.Scenes.Add(new GameplayScene());
+    Engine.Scenes.Add(new EditorScene());
     Engine.Scenes.SetStartScene<GameplayScene>();
   }
 
+  protected override void Update(float dt)
+  {
+    if (Engine.Input.IsKeyJustPressed(Key.F2))
+    {
+      if (Engine.Scenes.Current is EditorScene)
+      {
+        Engine.Scenes.Pop();
+      }
+      else
+      {
+        Engine.Scenes.Push<EditorScene>(false);
+      }
+    }
+
+    base.Update(dt);
+  }
 
   public void MapActions()
   {

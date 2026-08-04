@@ -9,26 +9,38 @@ public class Movement : Component
   public float Speed { get; set; } = 5f;
   public float RotationSpeed { get; set; } = 10f;
 
-  public override void Update(float dt)
+  Vector3 direction = Vector3.Zero;
+
+  // Only runs while this object's scene is the active one (see SceneManager.Update), so
+  // a stacked scene (e.g. behind the editor) stops steering the player.
+  public override void HandleInput()
   {
-    Vector3 direction = Vector3.Zero;
+    direction = Vector3.Zero;
 
     if (Engine.Input.IsActionPressed("move_up")) direction.Z -= 1f;
     if (Engine.Input.IsActionPressed("move_down")) direction.Z += 1f;
     if (Engine.Input.IsActionPressed("move_left")) direction.X -= 1f;
     if (Engine.Input.IsActionPressed("move_right")) direction.X += 1f;
 
-    if (direction == Vector3.Zero) return;
+    if (direction != Vector3.Zero) direction = Vector3.Normalize(direction);
+  }
 
-    direction = Vector3.Normalize(direction);
+  public override void Update(float dt)
+  {
+    // Runs even while stacked; consume the last direction once so a scene that stops
+    // receiving input (paused/stacked) settles to idle instead of drifting forever.
+    Vector3 currentDirection = direction;
+    direction = Vector3.Zero;
+
+    if (currentDirection == Vector3.Zero) return;
 
     // Model's neutral pose faces +Z, so yaw = angle from +Z to the movement direction.
-    float targetYaw = MathF.Atan2(direction.X, direction.Z);
+    float targetYaw = MathF.Atan2(currentDirection.X, currentDirection.Z);
     float currentYaw = Owner.Transform.Rotation.Y;
     float newYaw = MathHelper.LerpAngle(currentYaw, targetYaw, MathF.Min(RotationSpeed * dt, 1f));
     Owner.Transform.Rotation = new Vector3(0f, newYaw, 0f);
 
-    Vector3 targetPosition = Owner.Transform.Position + direction * Speed * dt;
+    Vector3 targetPosition = Owner.Transform.Position + currentDirection * Speed * dt;
     Owner.Transform.Position = Engine.Collisions.MoveAndCollide(Owner, targetPosition);
   }
 }

@@ -7,6 +7,11 @@ public class Scene
 {
   public GameObjectCollection Instances { get; } = [];
 
+  // Whether this scene reads input when it's current or sitting on the stack;
+  // set via SceneManager.Push's captureInput argument. Defaults to true so plain
+  // pushes/switches behave as before.
+  public bool InputEnabled { get; set; } = true;
+
   public virtual void Initialize()
   {
     foreach (GameObject instance in Instances)

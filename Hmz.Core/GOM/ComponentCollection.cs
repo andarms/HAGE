@@ -54,6 +54,8 @@ public class ComponentCollection(GameObject owner) : IReadOnlyComponentCollectio
 
   public bool Has<T>() where T : Component => components.ContainsKey(typeof(T));
 
+  public IReadOnlyCollection<Component> All => components.Values;
+
   public void Flush()
   {
     while (pendingRemove.TryDequeue(out Type? type))
