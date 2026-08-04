@@ -10,24 +10,23 @@ namespace Hmz.Game;
 
 public class Crate : GameObject
 {
-  Cube cube = new()
+  readonly Cube cube = new()
   {
     Size = new Vector3(1f, 1f, 1f),
   };
 
-  CubeStyle cubeStyle = new()
+  readonly CubeStyle cubeStyle = new()
   {
     Color = Color.Magenta,
   };
 
   public Crate()
   {
-    Transform.Position = new Vector3(-2f, 0f, 2f);
+    Transform.Position = new Vector3(-2f, 0.5f, 2f);
     Collider = new(this)
     {
       Type = CollisionType.Solid,
-      Size = new Vector3(1f, 2f, 1f),
-      Offset = new Vector3(0f, 1f, 0f),
+      Size = new Vector3(1f, 1f, 1f),
       Layer = CollisionLayer.Environment,
       Mask = CollisionLayer.All & ~CollisionLayer.Environment,
     };

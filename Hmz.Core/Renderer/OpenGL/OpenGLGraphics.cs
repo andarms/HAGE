@@ -417,11 +417,10 @@ public sealed class OpenGLGraphics : IGraphics
 
   public void DrawCube(Cube cube, CubeStyle style) => AddCubeInstance(cube.GetRenderMatrix(), style);
 
-  // For callers that already have a world matrix (e.g. a GameObject's cached WorldMatrix,
-  // which accounts for parenting) and don't want to duplicate that placement into the
-  // Cube's own Transform. cube.Size still applies as a local scale under that world matrix.
-  public void DrawCube(Cube cube, Matrix4x4 worldMatrix, CubeStyle style) =>
+  public void DrawCube(Cube cube, Matrix4x4 worldMatrix, CubeStyle style)
+  {
     AddCubeInstance(Matrix4x4.CreateScale(cube.Size) * worldMatrix, style);
+  }
 
   void AddCubeInstance(Matrix4x4 model, CubeStyle style)
   {
