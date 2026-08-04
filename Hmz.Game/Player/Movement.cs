@@ -36,9 +36,8 @@ public class Movement : Component
 
     // Model's neutral pose faces +Z, so yaw = angle from +Z to the movement direction.
     float targetYaw = MathF.Atan2(currentDirection.X, currentDirection.Z);
-    float currentYaw = Owner.Transform.Rotation.Y;
-    float newYaw = MathHelper.LerpAngle(currentYaw, targetYaw, MathF.Min(RotationSpeed * dt, 1f));
-    Owner.Transform.Rotation = new Vector3(0f, newYaw, 0f);
+    Quaternion targetRotation = Quaternion.CreateFromYawPitchRoll(targetYaw, 0f, 0f);
+    Owner.Transform.Rotation = Quaternion.Slerp(Owner.Transform.Rotation, targetRotation, MathF.Min(RotationSpeed * dt, 1f));
 
     Vector3 targetPosition = Owner.Transform.Position + currentDirection * Speed * dt;
     Owner.Transform.Position = Engine.Collisions.MoveAndCollide(Owner, targetPosition);

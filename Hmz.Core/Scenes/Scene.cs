@@ -35,7 +35,9 @@ public class Scene
 
   public virtual void Draw()
   {
-    var instancesOrdered = Instances.OrderBy(i => i.DrawOrder).ThenBy(i => i.WorldTransform.Position.Y);
+    // 3D visibility is resolved by the depth buffer, so only DrawOrder controls sequencing
+    // here (e.g. grouping for batching), not a 2D-style Y-sort.
+    var instancesOrdered = Instances.OrderBy(i => i.DrawOrder);
     foreach (GameObject instance in instancesOrdered)
     {
       instance.Draw();

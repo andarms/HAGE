@@ -98,6 +98,9 @@ public class EditorScene : Scene
     foreach (PropertyInfo property in target.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
     {
       if (!property.CanRead || property.GetIndexParameters().Length > 0) continue;
+      // Transform.EulerAngles is a convenience view over Rotation (see the Quaternion case
+      // below); showing both would just be two widgets fighting over the same value.
+      if (property.Name == "EulerAngles") continue;
 
       object? value = property.GetValue(target);
 
@@ -111,6 +114,10 @@ public class EditorScene : Scene
       {
         case Vector3 v3:
           if (ImGui.DragFloat3(property.Name, ref v3, 0.1f)) property.SetValue(target, v3);
+          break;
+        case Quaternion q:
+          Vector3 degrees = ToDegrees(q);
+          if (ImGui.DragFloat3(property.Name, ref degrees, 1f)) property.SetValue(target, FromDegrees(degrees));
           break;
         case Vector2 v2:
           if (ImGui.DragFloat2(property.Name, ref v2, 0.1f)) property.SetValue(target, v2);
@@ -132,5 +139,20 @@ public class EditorScene : Scene
           break;
       }
     }
+  }
+
+  // Quaternions edit far more intuitively as degrees than as raw x/y/z/w components.
+  static Vector3 ToDegrees(Quaternion q)
+  {
+    float pitch = MathF.Asin(Math.Clamp(2f * (q.W * q.X - q.Z * q.Y), -1f, 1f));
+    float yaw = MathF.Atan2(2f * (q.W * q.Y + q.Z * q.X), 1f - 2f * (q.X * q.X + q.Y * q.Y));
+    float roll = MathF.Atan2(2f * (q.W * q.Z + q.X * q.Y), 1f - 2f * (q.X * q.X + q.Z * q.Z));
+    return new Vector3(pitch, yaw, roll) * (180f / MathF.PI);
+  }
+
+  static Quaternion FromDegrees(Vector3 degrees)
+  {
+    Vector3 radians = degrees * (MathF.PI / 180f);
+    return Quaternion.CreateFromYawPitchRoll(radians.Y, radians.X, radians.Z);
   }
 }

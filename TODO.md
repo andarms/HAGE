@@ -96,18 +96,6 @@ Make scene and object lifetime, transforms, and draw behavior explicit and scala
 
 **Tasks**
 
-### [ ] Cache `GameObject` world transforms
-
-Add dirty-flagged world transform caching.
-
-### [ ] Reconcile Y-sort with 3D depth testing
-
-Decide whether the engine is 2D, 3D, or both with separate draw paths.
-
-### [ ] Replace Euler rotation or offer quaternion accessors
-
-Align `Transform.Rotation` with the quaternion-based animation system.
-
 ### [ ] Remove dead commented-out code in `Scene` and `SceneManager`
 
 Implement UI/save hooks or delete the scaffolding.
@@ -136,6 +124,24 @@ Implement the empty `RestoreSaveData` path.
 
 Introduce a shared modeled-object base or factory if more cases appear.
 
+**Notes**
+
+The engine commits to 3D (no separate 2D draw path); `_2D` primitives remain but are not part of the depth-tested scene graph's ordering.
+
+**Completed**
+
+### [x] Cache `GameObject` world transforms
+
+`Transform` now bumps an internal `Version` whenever `Position`/`Rotation`/`Scale` changes. `GameObject.WorldMatrix`/`WorldTransform` cache against that version plus the parent's own `WorldVersion` (and parent identity, for re-parenting), so the matrix/decompose only recompute when something in the ancestor chain actually changed.
+
+### [x] Reconcile Y-sort with 3D depth testing
+
+Decided: the engine is 3D. GPU depth testing (already enabled in `StartMode3D`) resolves per-pixel visibility, so the `.ThenBy(i => i.WorldTransform.Position.Y)` tie-breaker in `Scene.Draw`/`GameObject.Draw` was a leftover 2D painter's-algorithm technique and has been removed; `DrawOrder` alone now controls draw sequencing.
+
+### [x] Replace Euler rotation or offer quaternion accessors
+
+`Transform.Rotation` is now a `Quaternion` (source of truth, matching the animation system's sampling/`Slerp`), with `Transform.EulerAngles` as a derived yaw/pitch/roll convenience accessor. `Movement` steers via `Quaternion.Slerp` instead of manual angle lerping; `Cube`/`Sphere` render matrices build from the quaternion directly. The editor inspector edits quaternion properties as degrees.
+
 ### Editor
 
 **Goal**
@@ -144,13 +150,17 @@ Provide an in-game editor scene for inspecting and editing the current game stat
 
 **Tasks**
 
-### [ ] Add an editor scene and open it with F2
+No open tasks currently recorded.
 
-Create an `EditorScene` and push it with `SceneManager.Push<EditorScene>()` when F2 is pressed.
+**Completed**
 
-### [ ] Add an ImGui entity inspector
+### [x] Add an editor scene and open it with F2
 
-Display the current scene's entities and expose their components and editable properties through ImGui.
+`EditorScene` lives in its own `Hmz.Editor` project (referencing only `Hmz.Core`) so it can be included/excluded from a build independently of `Hmz.Game`. `UntitledGame` registers it and toggles `SceneManager.Push<EditorScene>()`/`Pop()` on F2.
+
+### [x] Add an ImGui entity inspector
+
+`EditorScene` draws an "Entities" list (the scene below it on the stack) and an "Inspector" panel that reflects over the selected entity's `Transform` and attached components, rendering an editable ImGui widget per public settable property.
 
 ### Rendering
 

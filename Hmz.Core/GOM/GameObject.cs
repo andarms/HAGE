@@ -16,9 +16,63 @@ public class GameObject
 
   public Transform Transform { get; } = new();
 
-  public Matrix4x4 WorldMatrix => Transform.GetLocalMatrix() * (Parent?.WorldMatrix ?? Matrix4x4.Identity);
+  Matrix4x4 cachedWorldMatrix = Matrix4x4.Identity;
+  int cachedLocalVersion = -1;
+  int cachedParentVersion = -1;
+  GameObject? cachedParent;
+  int worldVersion;
 
-  public Transform WorldTransform => Transform.FromMatrix(WorldMatrix);
+  Transform? cachedWorldTransform;
+  int cachedWorldTransformVersion = -1;
+
+  public Matrix4x4 WorldMatrix
+  {
+    get
+    {
+      RefreshWorldMatrix();
+      return cachedWorldMatrix;
+    }
+  }
+
+  // Bumped whenever the cached world matrix is recomputed, so a child can tell its parent's
+  // world transform changed without recomputing the whole ancestor chain itself.
+  internal int WorldVersion
+  {
+    get
+    {
+      RefreshWorldMatrix();
+      return worldVersion;
+    }
+  }
+
+  void RefreshWorldMatrix()
+  {
+    int parentVersion = Parent?.WorldVersion ?? 0;
+    if (Transform.Version == cachedLocalVersion && parentVersion == cachedParentVersion && ReferenceEquals(Parent, cachedParent))
+    {
+      return;
+    }
+
+    cachedWorldMatrix = Transform.GetLocalMatrix() * (Parent?.WorldMatrix ?? Matrix4x4.Identity);
+    cachedLocalVersion = Transform.Version;
+    cachedParentVersion = parentVersion;
+    cachedParent = Parent;
+    worldVersion++;
+  }
+
+  public Transform WorldTransform
+  {
+    get
+    {
+      RefreshWorldMatrix();
+      if (cachedWorldTransform == null || cachedWorldTransformVersion != worldVersion)
+      {
+        cachedWorldTransform = Transform.FromMatrix(cachedWorldMatrix);
+        cachedWorldTransformVersion = worldVersion;
+      }
+      return cachedWorldTransform;
+    }
+  }
 
   public Vector3 GlobalPosition => Vector3.Transform(Vector3.Zero, WorldMatrix);
 
@@ -65,7 +119,9 @@ public class GameObject
 
   public virtual void Draw()
   {
-    foreach (GameObject child in Children.OrderBy(i => i.DrawOrder).ThenBy(i => i.WorldTransform.Position.Y))
+    // 3D visibility is resolved by the depth buffer, so only DrawOrder controls sequencing
+    // here (e.g. grouping for batching), not a 2D-style Y-sort.
+    foreach (GameObject child in Children.OrderBy(i => i.DrawOrder))
     {
       child.Draw();
       if (Engine.DebugMode) child.Debug();

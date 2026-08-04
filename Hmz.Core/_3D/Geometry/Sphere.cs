@@ -102,7 +102,7 @@ public class Sphere
   public Matrix4x4 GetRenderMatrix()
   {
     Matrix4x4 translation = Matrix4x4.CreateTranslation(Transform.Position);
-    Matrix4x4 rotation = Matrix4x4.CreateFromYawPitchRoll(Transform.Rotation.Y, Transform.Rotation.X, Transform.Rotation.Z);
+    Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(Transform.Rotation);
     Matrix4x4 scale = Matrix4x4.CreateScale(Transform.Scale);
     var radiusScale = Matrix4x4.CreateScale(Radius);
     return radiusScale * scale * rotation * translation;
