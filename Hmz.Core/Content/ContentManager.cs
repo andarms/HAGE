@@ -1,6 +1,8 @@
 using FontStashSharp;
 using Hmz.Core._3D.Geometry;
+using Hmz.Core.GOM;
 using Hmz.Core.Renderer;
+using Hmz.Core.Tilemap;
 
 namespace Hmz.Core.Content;
 
@@ -49,6 +51,14 @@ public sealed class ContentManager
     Model model = ModelLoader.Load(path, key);
     cache[key] = model;
     return model;
+  }
+
+  // Not cached: unlike Model/Texture/Font, a TileMap is a live GameObject graph with its own
+  // mutable Transform/Collider state, not a shareable immutable asset.
+  public TileMap LoadTilemap(string path, TypeRegistry<Tile3D> tiles, TypeRegistry<GameObject> objects)
+  {
+    TilemapDocument document = TilemapDocument.Load(Resolve(path));
+    return TileMap.FromDocument(document, tiles, objects);
   }
 
   public Shader LoadShader(string path)

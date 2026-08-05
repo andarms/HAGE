@@ -1,7 +1,7 @@
 using System.Numerics;
 using Hmz.Core.GOM;
 
-namespace Hmz.Game;
+namespace Hmz.Core.Tilemap;
 
 public enum TileSize
 {

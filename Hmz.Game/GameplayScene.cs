@@ -5,6 +5,8 @@ using Hmz.Core.Hosting;
 using Hmz.Core.Renderer;
 using Hmz.Core.Renderer.Styles;
 using Hmz.Core.Scenes;
+using Hmz.Core.Tilemap;
+using Hmz.Game.Tilemap;
 
 namespace Hmz.Game;
 
@@ -38,7 +40,10 @@ public sealed class GameplayScene : Scene
     Instances.Add(tree2);
     Crate trigger = new();
     Instances.Add(trigger);
-    CreateWalls();
+
+    TileMap map = Engine.Content.LoadTilemap("maps/level1.json", Registries.Tiles, Registries.Objects);
+    map.Transform.Position = new Vector3(-22f, 0f, -22f);
+    Instances.Add(map);
   }
 
   public override void Update(float dt)
@@ -86,26 +91,5 @@ public sealed class GameplayScene : Scene
   {
     Engine.Content.UnloadAll();
     base.Terminate();
-  }
-
-
-  public void CreateWalls()
-  {
-    int roomSize = 20;
-    for (int x = -roomSize; x <= roomSize; x += 2)
-    {
-      for (int z = -roomSize; z <= roomSize; z += 2)
-      {
-        if (x == -roomSize || x == roomSize || z == -roomSize || z == roomSize)
-        {
-          Wall wall = new()
-          {
-            Transform = { Position = new Vector3(x, 1f, z) },
-          };
-          if (x == -roomSize || x == roomSize) wall.RotateTile(MathF.PI / 2f);
-          Instances.Add(wall);
-        }
-      }
-    }
   }
 }

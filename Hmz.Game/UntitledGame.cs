@@ -2,6 +2,7 @@ using Hmz.Core;
 using Hmz.Core.Hosting;
 using Hmz.Core.Input;
 using Hmz.Editor;
+using Hmz.Game.Tilemap;
 
 namespace Hmz.Game;
 
@@ -10,6 +11,7 @@ public class UntitledGame : Core.Hosting.Game
   protected override void LoadScenes()
   {
     MapActions();
+    Registries.RegisterAll();
     Engine.Scenes.Add(new GameplayScene());
     Engine.Scenes.Add(new EditorScene());
     Engine.Scenes.SetStartScene<GameplayScene>();
