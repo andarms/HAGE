@@ -38,6 +38,7 @@ public sealed class GameplayScene : Scene
     Instances.Add(tree2);
     Crate trigger = new();
     Instances.Add(trigger);
+    CreateWalls();
   }
 
   public override void Update(float dt)
@@ -85,5 +86,26 @@ public sealed class GameplayScene : Scene
   {
     Engine.Content.UnloadAll();
     base.Terminate();
+  }
+
+
+  public void CreateWalls()
+  {
+    int roomSize = 20;
+    for (int x = -roomSize; x <= roomSize; x += 2)
+    {
+      for (int z = -roomSize; z <= roomSize; z += 2)
+      {
+        if (x == -roomSize || x == roomSize || z == -roomSize || z == roomSize)
+        {
+          Wall wall = new()
+          {
+            Transform = { Position = new Vector3(x, 1f, z) },
+          };
+          if (x == -roomSize || x == roomSize) wall.RotateTile(MathF.PI / 2f);
+          Instances.Add(wall);
+        }
+      }
+    }
   }
 }
