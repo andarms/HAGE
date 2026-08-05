@@ -3,9 +3,24 @@ using Hmz.Core.GOM;
 
 namespace Hmz.Game;
 
+public enum TileSize
+{
+  OneByOne,
+  OneByTwo,
+  OneByThree,
+  TwoByOne,
+  TwoByTwo,
+  TwoByThree,
+  ThreeByOne,
+  ThreeByTwo,
+  ThreeByThree,
+}
+
 public class Tile3D : GameObject
 {
   const float RightAngle = MathF.PI / 2f;
+
+  public TileSize Size { get; set; } = TileSize.OneByOne;
 
   int rotationSteps;
   Vector3? baseColliderSize;

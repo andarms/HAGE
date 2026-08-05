@@ -21,6 +21,7 @@ public class Wall : Tile3D
 
   public Wall()
   {
+    Size = TileSize.TwoByTwo;
     Collider = new(this)
     {
       Type = CollisionType.Solid,

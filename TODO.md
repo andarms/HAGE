@@ -290,10 +290,6 @@ Keep the current kinematic AABB approach correct and scalable without introducin
 
 **Tasks**
 
-### [ ] Add spatial partitioning
-
-Replace O(n^2) all-pairs collision checks with a uniform grid or similar structure.
-
 ### [ ] Add non-AABB colliders
 
 Add at least a sphere collider for round objects.
@@ -317,6 +313,12 @@ Coordinate this with the 2D feature decision.
 **Notes**
 
 `MoveAndCollide` remains the intended level; gravity, velocity, and projectiles stay in game-side components. Do not add a physics engine for the current scope. A thin `CharacterBody` helper could accumulate velocity and call `MoveAndCollide` without introducing rigid-body simulation.
+
+**Completed**
+
+### [x] Add spatial partitioning
+
+Replaced the O(n^2) all-pairs scan with `SpatialGrid`, a uniform grid over the XZ plane (cell size matches the smallest tile). `CollisionsManager` now queries nearby cells for both broad-phase pair detection and `MoveAndCollide`'s per-axis resolution; static colliders are inserted once and never touched again.
 
 ### Input
 

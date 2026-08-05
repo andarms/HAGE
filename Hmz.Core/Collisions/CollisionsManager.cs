@@ -7,33 +7,58 @@ public class CollisionsManager
 {
   const float SkinWidth = 0.001f;
 
+  // Matches the smallest TileSize (1x1), so bigger tiles just span more cells.
+  const float CellSize = 1f;
+
   readonly List<GameObject> collisionObjects = [];
   readonly HashSet<GameObject> registered = [];
   readonly Dictionary<GameObject, HashSet<GameObject>> previousColliding = [];
 
+  readonly SpatialGrid grid = new(CellSize);
+
   readonly List<GameObject> activeObjects = [];
   readonly List<CollisionBox> activeBounds = [];
+  readonly Dictionary<GameObject, int> activeIndex = [];
   readonly List<GameObject> eventBuffer = [];
+
+  readonly HashSet<GameObject> resolveCandidates = [];
+  readonly HashSet<GameObject> pairCandidates = [];
 
   public void Register(GameObject obj)
   {
-    if (!registered.Add(obj)) return;
+    if (!registered.Add(obj))
+    {
+      return;
+    }
 
     collisionObjects.Add(obj);
     previousColliding[obj] = [];
+
+    if (obj.Collider is { IsActive: true } collider)
+    {
+      grid.Move(obj, collider.Bounds(obj.GlobalPosition));
+    }
   }
 
   public void Unregister(GameObject obj)
   {
-    if (!registered.Remove(obj)) return;
+    if (!registered.Remove(obj))
+    {
+      return;
+    }
 
     collisionObjects.Remove(obj);
     previousColliding.Remove(obj);
+    grid.Remove(obj);
 
     foreach (var other in collisionObjects)
     {
       var otherCollider = other.Collider;
-      if (otherCollider?.CollidingWith.Remove(obj) != true) continue;
+
+      if (otherCollider?.CollidingWith.Remove(obj) != true)
+      {
+        continue;
+      }
 
       otherCollider.OnCollisionExit?.Invoke(new Collision(other, obj, Direction.None));
       previousColliding[other].Remove(obj);
@@ -49,14 +74,28 @@ public class CollisionsManager
     var sourceCollider = source.Collider;
     var otherCollider = other.Collider;
 
-    if (!source.IsActive || !other.IsActive) return false;
-    if (sourceCollider?.IsActive != true || otherCollider?.IsActive != true) return false;
-    if (!CanPair(sourceCollider, otherCollider)) return false;
+    if (!source.IsActive || !other.IsActive)
+    {
+      return false;
+    }
+
+    if (sourceCollider?.IsActive != true || otherCollider?.IsActive != true)
+    {
+      return false;
+    }
+
+    if (!CanPair(sourceCollider, otherCollider))
+    {
+      return false;
+    }
 
     var sourceBounds = sourceCollider.Bounds(source.GlobalPosition);
     var otherBounds = otherCollider.Bounds(other.GlobalPosition);
 
-    if (!sourceBounds.Intersects(otherBounds)) return false;
+    if (!sourceBounds.Intersects(otherBounds))
+    {
+      return false;
+    }
 
     collisionInfo = new Collision(source, other, GetCollisionSide(sourceBounds, otherBounds));
     return true;
@@ -65,7 +104,11 @@ public class CollisionsManager
   public Vector3 MoveAndCollide(GameObject gameObject, Vector3 targetPosition)
   {
     var collider = gameObject.Collider;
-    if (collider?.IsActive != true) return targetPosition;
+
+    if (collider?.IsActive != true)
+    {
+      return targetPosition;
+    }
 
     var resolvedPosition = gameObject.Transform.Position;
     var movement = targetPosition - resolvedPosition;
@@ -74,26 +117,49 @@ public class CollisionsManager
     resolvedPosition = ResolveAxis(gameObject, collider, resolvedPosition, movement.Z, Axis.Z);
     resolvedPosition = ResolveAxis(gameObject, collider, resolvedPosition, movement.Y, Axis.Y);
 
+    grid.Move(gameObject, collider.Bounds(resolvedPosition));
+
     return resolvedPosition;
   }
 
   Vector3 ResolveAxis(GameObject source, Collider sourceCollider, Vector3 position, float movement, Axis axis)
   {
-    if (movement == 0) return position;
+    if (movement == 0)
+    {
+      return position;
+    }
 
     var moved = SetAxis(position, axis, GetAxis(position, axis) + movement);
     var bounds = sourceCollider.Bounds(moved);
 
-    foreach (var other in collisionObjects)
+    resolveCandidates.Clear();
+    grid.Query(bounds, resolveCandidates);
+
+    foreach (var other in resolveCandidates)
     {
-      if (ReferenceEquals(other, source) || !other.IsActive) continue;
+      if (ReferenceEquals(other, source) || !other.IsActive)
+      {
+        continue;
+      }
 
       var otherCollider = other.Collider;
-      if (otherCollider?.IsActive != true || otherCollider.Type != CollisionType.Solid) continue;
-      if (!CanPair(sourceCollider, otherCollider)) continue;
+
+      if (otherCollider?.IsActive != true || otherCollider.Type != CollisionType.Solid)
+      {
+        continue;
+      }
+
+      if (!CanPair(sourceCollider, otherCollider))
+      {
+        continue;
+      }
 
       var otherBounds = otherCollider.Bounds(other.GlobalPosition);
-      if (!bounds.Intersects(otherBounds)) continue;
+
+      if (!bounds.Intersects(otherBounds))
+      {
+        continue;
+      }
 
       var correction = movement > 0
         ? GetAxis(otherBounds.Min, axis) - GetAxis(bounds.Max, axis) - SkinWidth
@@ -110,13 +176,24 @@ public class CollisionsManager
   {
     activeObjects.Clear();
     activeBounds.Clear();
+    activeIndex.Clear();
 
     foreach (var obj in collisionObjects)
     {
-      if (!obj.IsActive || obj.Collider?.IsActive != true) continue;
+      var isActive = obj.IsActive && obj.Collider?.IsActive == true;
 
+      if (!isActive)
+      {
+        grid.Remove(obj);
+        continue;
+      }
+
+      var bounds = obj.Collider!.Bounds(obj.GlobalPosition);
+
+      activeIndex[obj] = activeObjects.Count;
       activeObjects.Add(obj);
-      activeBounds.Add(obj.Collider.Bounds(obj.GlobalPosition));
+      activeBounds.Add(bounds);
+      grid.Move(obj, bounds);
     }
 
     foreach (var obj in activeObjects)
@@ -131,17 +208,33 @@ public class CollisionsManager
 
     for (int i = 0; i < activeObjects.Count; i++)
     {
-      var colliderA = activeObjects[i].Collider!;
+      var objectA = activeObjects[i];
+      var colliderA = objectA.Collider!;
 
-      for (int j = i + 1; j < activeObjects.Count; j++)
+      pairCandidates.Clear();
+      grid.Query(activeBounds[i], pairCandidates);
+
+      foreach (var other in pairCandidates)
       {
-        var colliderB = activeObjects[j].Collider!;
+        if (!activeIndex.TryGetValue(other, out var j) || j <= i)
+        {
+          continue;
+        }
 
-        if (!CanPair(colliderA, colliderB)) continue;
-        if (!activeBounds[i].Intersects(activeBounds[j])) continue;
+        var colliderB = other.Collider!;
 
-        colliderA.CollidingWith.Add(activeObjects[j]);
-        colliderB.CollidingWith.Add(activeObjects[i]);
+        if (!CanPair(colliderA, colliderB))
+        {
+          continue;
+        }
+
+        if (!activeBounds[i].Intersects(activeBounds[j]))
+        {
+          continue;
+        }
+
+        colliderA.CollidingWith.Add(other);
+        colliderB.CollidingWith.Add(objectA);
       }
     }
 
@@ -158,7 +251,10 @@ public class CollisionsManager
 
       foreach (var other in eventBuffer)
       {
-        if (other.Collider is not { } otherCollider) continue;
+        if (other.Collider is not { } otherCollider)
+        {
+          continue;
+        }
 
         var side = GetCollisionSide(sourceBounds, otherCollider.Bounds(other.GlobalPosition));
         var collision = new Collision(objectA, other, side);
@@ -174,9 +270,13 @@ public class CollisionsManager
       }
 
       eventBuffer.Clear();
+
       foreach (var other in previous)
       {
-        if (!colliderA.CollidingWith.Contains(other)) eventBuffer.Add(other);
+        if (!colliderA.CollidingWith.Contains(other))
+        {
+          eventBuffer.Add(other);
+        }
       }
 
       foreach (var other in eventBuffer)
@@ -189,14 +289,28 @@ public class CollisionsManager
 
   public List<GameObject> GetNearbyCollisions(GameObject target, CollisionBox area)
   {
-    var collisions = new List<GameObject>();
     var targetCollider = target.Collider;
+    var collisions = new List<GameObject>();
+    HashSet<GameObject> candidates = [];
 
-    foreach (var obj in collisionObjects)
+    grid.Query(area, candidates);
+
+    foreach (var obj in candidates)
     {
-      if (ReferenceEquals(obj, target) || !obj.IsActive || obj.Collider?.IsActive != true) continue;
-      if (targetCollider != null && !CanPair(targetCollider, obj.Collider)) continue;
-      if (obj.Collider.Bounds(obj.GlobalPosition).Intersects(area)) collisions.Add(obj);
+      if (ReferenceEquals(obj, target) || !obj.IsActive || obj.Collider?.IsActive != true)
+      {
+        continue;
+      }
+
+      if (targetCollider != null && !CanPair(targetCollider, obj.Collider))
+      {
+        continue;
+      }
+
+      if (obj.Collider.Bounds(obj.GlobalPosition).Intersects(area))
+      {
+        collisions.Add(obj);
+      }
     }
 
     return collisions;
@@ -214,10 +328,21 @@ public class CollisionsManager
       MathF.Min(sourceBounds.Max.Z, otherBounds.Max.Z) - MathF.Max(sourceBounds.Min.Z, otherBounds.Min.Z)
     );
 
-    if (overlap.X <= 0 || overlap.Y <= 0 || overlap.Z <= 0) return GetDominantDirection(delta);
+    if (overlap.X <= 0 || overlap.Y <= 0 || overlap.Z <= 0)
+    {
+      return GetDominantDirection(delta);
+    }
 
-    if (overlap.X <= overlap.Y && overlap.X <= overlap.Z) return delta.X >= 0 ? Direction.Right : Direction.Left;
-    if (overlap.Y <= overlap.Z) return delta.Y >= 0 ? Direction.Top : Direction.Bottom;
+    if (overlap.X <= overlap.Y && overlap.X <= overlap.Z)
+    {
+      return delta.X >= 0 ? Direction.Right : Direction.Left;
+    }
+
+    if (overlap.Y <= overlap.Z)
+    {
+      return delta.Y >= 0 ? Direction.Top : Direction.Bottom;
+    }
+
     return delta.Z >= 0 ? Direction.Front : Direction.Back;
   }
 
@@ -225,8 +350,16 @@ public class CollisionsManager
   {
     var absolute = new Vector3(MathF.Abs(delta.X), MathF.Abs(delta.Y), MathF.Abs(delta.Z));
 
-    if (absolute.X >= absolute.Y && absolute.X >= absolute.Z) return delta.X >= 0 ? Direction.Right : Direction.Left;
-    if (absolute.Y >= absolute.Z) return delta.Y >= 0 ? Direction.Top : Direction.Bottom;
+    if (absolute.X >= absolute.Y && absolute.X >= absolute.Z)
+    {
+      return delta.X >= 0 ? Direction.Right : Direction.Left;
+    }
+
+    if (absolute.Y >= absolute.Z)
+    {
+      return delta.Y >= 0 ? Direction.Top : Direction.Bottom;
+    }
+
     return delta.Z >= 0 ? Direction.Front : Direction.Back;
   }
 
