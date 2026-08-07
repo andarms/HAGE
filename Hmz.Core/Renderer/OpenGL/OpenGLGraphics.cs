@@ -14,6 +14,7 @@ public sealed class OpenGLGraphics : IGraphics
   readonly Shader shader;
   readonly uint vao, vbo;
   readonly uint cubeVao, cubeVbo, cubeEbo, cubeInstanceVbo;
+  readonly uint quadVao, quadVbo, quadEbo, quadInstanceVbo;
   readonly uint sphereVao, sphereVbo, sphereTriangleEbo, sphereLineEbo, sphereInstanceVbo;
   readonly uint batch2DVao, batch2DVbo;
   readonly uint gridVao, gridVbo;
@@ -38,6 +39,10 @@ public sealed class OpenGLGraphics : IGraphics
   readonly List<InstanceData> pendingTransparentCubeFill = [];
   readonly Dictionary<float, List<InstanceData>> pendingCubeWireframe = [];
   readonly Dictionary<float, List<InstanceData>> pendingCubeBorder = [];
+
+  // Quad draws queued between StartMode3D/EndMode3D, grouped by shared texture (null = untextured).
+  readonly Dictionary<Texture2D?, List<InstanceData>> pendingOpaqueQuadFill = [];
+  readonly Dictionary<Texture2D?, List<InstanceData>> pendingTransparentQuadFill = [];
 
   readonly List<InstanceData> pendingSphereFill = [];
   readonly Dictionary<float, List<InstanceData>> pendingSphereWireframe = [];
@@ -106,6 +111,24 @@ public sealed class OpenGLGraphics : IGraphics
     Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, new float[20], BufferUsageARB.DynamicDraw);
     ConfigureInstanceLayout(includeColor: true);
 
+    quadVao = Engine.GL.GenVertexArray();
+    Engine.GL.BindVertexArray(quadVao);
+
+    quadVbo = Engine.GL.GenBuffer();
+    Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, quadVbo);
+    Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, new Quad().GetVertices(), BufferUsageARB.StaticDraw);
+
+    quadEbo = Engine.GL.GenBuffer();
+    Engine.GL.BindBuffer(BufferTargetARB.ElementArrayBuffer, quadEbo);
+    Engine.GL.BufferData(BufferTargetARB.ElementArrayBuffer, new Quad().GetIndices(), BufferUsageARB.StaticDraw);
+
+    ConfigurePositionTexCoordLayout();
+
+    quadInstanceVbo = Engine.GL.GenBuffer();
+    Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, quadInstanceVbo);
+    Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, new float[20], BufferUsageARB.DynamicDraw);
+    ConfigureInstanceLayout(includeColor: true);
+
     sphereVao = Engine.GL.GenVertexArray();
     Engine.GL.BindVertexArray(sphereVao);
 
@@ -154,6 +177,15 @@ public sealed class OpenGLGraphics : IGraphics
     Engine.GL.EnableVertexAttribArray(0);
   }
 
+  // Binds vec3-position + vec2-texcoord to attributes 0/1, for the VAO currently bound.
+  static unsafe void ConfigurePositionTexCoordLayout()
+  {
+    Engine.GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 5 * sizeof(float), (void*)0);
+    Engine.GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    Engine.GL.EnableVertexAttribArray(0);
+    Engine.GL.EnableVertexAttribArray(1);
+  }
+
   static unsafe void ConfigurePositionColorLayout()
   {
     Engine.GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, Batch2DFloatsPerVertex * sizeof(float), (void*)0);
@@ -193,6 +225,10 @@ public sealed class OpenGLGraphics : IGraphics
     Engine.GL.DeleteBuffer(cubeVbo);
     Engine.GL.DeleteBuffer(cubeEbo);
     Engine.GL.DeleteBuffer(cubeInstanceVbo);
+    Engine.GL.DeleteVertexArray(quadVao);
+    Engine.GL.DeleteBuffer(quadVbo);
+    Engine.GL.DeleteBuffer(quadEbo);
+    Engine.GL.DeleteBuffer(quadInstanceVbo);
     Engine.GL.DeleteVertexArray(sphereVao);
     Engine.GL.DeleteBuffer(sphereVbo);
     Engine.GL.DeleteBuffer(sphereTriangleEbo);
@@ -421,6 +457,7 @@ public sealed class OpenGLGraphics : IGraphics
   {
     FlushCubes();
     FlushSpheres();
+    FlushQuads(pendingOpaqueQuadFill);
     FlushMeshInstances(pendingOpaqueMeshInstances);
     FlushTransparent();
     Engine.GL.Disable(EnableCap.DepthTest);
@@ -431,13 +468,15 @@ public sealed class OpenGLGraphics : IGraphics
   // other purely by draw order (draws are not depth-sorted against one another).
   void FlushTransparent()
   {
-    if (pendingTransparentCubeFill.Count == 0 && pendingTransparentMeshInstances.Count == 0 && pendingTransparentSkinned.Count == 0) return;
+    if (pendingTransparentCubeFill.Count == 0 && pendingTransparentQuadFill.Count == 0
+      && pendingTransparentMeshInstances.Count == 0 && pendingTransparentSkinned.Count == 0) return;
 
     Engine.GL.Enable(EnableCap.Blend);
     Engine.GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
     Engine.GL.DepthMask(false);
 
     FlushTransparentCubes();
+    FlushQuads(pendingTransparentQuadFill);
 
     FlushMeshInstances(pendingTransparentMeshInstances);
     foreach (TransparentSkinnedDraw draw in pendingTransparentSkinned)
@@ -533,6 +572,64 @@ public sealed class OpenGLGraphics : IGraphics
 
     shader.SetBool("uInstancedTransform", false);
     shader.SetBool("uUseVertexColor", false);
+  }
+
+  public void DrawQuad(Quad quad, QuadStyle style) => AddQuadInstance(quad.GetRenderMatrix(), style);
+
+  public void DrawQuad(Quad quad, Matrix4x4 worldMatrix, QuadStyle style)
+  {
+    AddQuadInstance(Matrix4x4.CreateScale(quad.Size.X, 1f, quad.Size.Y) * worldMatrix, style);
+  }
+
+  void AddQuadInstance(Matrix4x4 model, QuadStyle style)
+  {
+    Vector4 color = ApplyTint(style.Color);
+    Dictionary<Texture2D?, List<InstanceData>> group = color.W < 1f ? pendingTransparentQuadFill : pendingOpaqueQuadFill;
+    GetQuadGroup(group, style.Texture).Add(new InstanceData(model, color));
+  }
+
+  static List<InstanceData> GetQuadGroup(Dictionary<Texture2D?, List<InstanceData>> groups, Texture2D? texture)
+  {
+    if (!groups.TryGetValue(texture, out List<InstanceData>? group))
+    {
+      group = [];
+      groups[texture] = group;
+    }
+    return group;
+  }
+
+  unsafe void FlushQuads(Dictionary<Texture2D?, List<InstanceData>> pending)
+  {
+    if (pending.Count == 0) return;
+
+    Engine.GL.BindVertexArray(quadVao);
+    Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, quadInstanceVbo);
+    shader.SetBool("uInstancedTransform", true);
+    shader.SetBool("uUseVertexColor", true);
+
+    foreach ((Texture2D? texture, List<InstanceData> instances) in pending)
+    {
+      if (instances.Count == 0) continue;
+
+      Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, MemoryMarshal.Cast<InstanceData, float>(CollectionsMarshal.AsSpan(instances)), BufferUsageARB.DynamicDraw);
+
+      if (texture != null)
+      {
+        Engine.GL.ActiveTexture(TextureUnit.Texture0);
+        Engine.GL.BindTexture(TextureTarget.Texture2D, texture.Handle);
+        shader.SetInt("uTexture", 0);
+        shader.SetBool("uTextured", true);
+      }
+
+      Engine.GL.DrawElementsInstanced(PrimitiveType.Triangles, Quad.IndexCount, DrawElementsType.UnsignedInt, (void*)0, (uint)instances.Count);
+      CountDrawCall();
+
+      shader.SetBool("uTextured", false);
+    }
+
+    shader.SetBool("uInstancedTransform", false);
+    shader.SetBool("uUseVertexColor", false);
+    pending.Clear();
   }
 
   public void DrawDebugGrid(int xRows, int zColumns, float cellSize, float y = 0f, float offsetX = 0f, float offsetZ = 0f)

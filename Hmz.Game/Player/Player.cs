@@ -39,6 +39,7 @@ public class Player : GameObject
     Components.Add(movement);
     Components.Add(animator);
     Components.Add(stateMachine);
+    Components.Add(new BlobShadow { Texture = Engine.Content.LoadTexture("textures/blob_shadow.png") });
 
     stateMachine.Register(new States.PlayerIdleState());
     stateMachine.Register(new States.PlayerWalkingState());

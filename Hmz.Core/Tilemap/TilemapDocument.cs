@@ -14,7 +14,7 @@ public class TilemapDocument
   {
     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    WriteIndented = true,
+    WriteIndented = false,
     Converters = { new Vector3JsonConverter() },
   };
 

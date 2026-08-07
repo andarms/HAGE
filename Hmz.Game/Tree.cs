@@ -27,5 +27,6 @@ public class Tree : GameObject
     Model model = Engine.Content.LoadModel("models/tree_1.gltf");
     ModelRenderer renderer = new(model);
     Components.Add(renderer);
+    Components.Add(new BlobShadow { Texture = Engine.Content.LoadTexture("textures/blob_shadow.png") });
   }
 }
