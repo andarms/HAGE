@@ -64,7 +64,7 @@ public sealed class TilemapEditorScene : Scene
 
   void HandleSave()
   {
-    if (Engine.Input.IsKeyJustPressed(Key.S)) tilemap.Save(Engine.Content.Resolve(MapPath));
+    if (Engine.Input.IsKeyJustPressed(Key.S)) tilemap.Save(Engine.Content.ResolveSource(MapPath));
   }
 
   void HandlePlacement()

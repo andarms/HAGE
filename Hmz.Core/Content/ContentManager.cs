@@ -1,3 +1,4 @@
+using System.Reflection;
 using FontStashSharp;
 using Hmz.Core._3D.Geometry;
 using Hmz.Core.Renderer;
@@ -10,6 +11,24 @@ public sealed class ContentManager
   public string ContentRoot { get; init; } = "assets/";
   public string Resolve(string path) => Path.Combine(AppContext.BaseDirectory, ContentRoot, path);
   private readonly Dictionary<string, object> cache = [];
+
+  // Resolves against the tracked assets folder in the repo, not the bin output copy -
+  // for dev-time tools (the tilemap editor's save) that must edit the real source file
+  // rather than a build artifact. Only works running from a local source build; see the
+  // ContentSourceRoot assembly metadata in Hmz.Windows.csproj.
+  public string ResolveSource(string path)
+  {
+    string? sourceRoot = Assembly.GetEntryAssembly()?
+      .GetCustomAttributes<AssemblyMetadataAttribute>()
+      .FirstOrDefault(a => a.Key == "ContentSourceRoot")?.Value;
+
+    if (sourceRoot == null)
+    {
+      throw new InvalidOperationException("ContentSourceRoot metadata is missing - ResolveSource only works in a local source build.");
+    }
+
+    return Path.Combine(sourceRoot, path);
+  }
 
   public Font DefaultFont { get; } = LoadEmbeddedFont();
 

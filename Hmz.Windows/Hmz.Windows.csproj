@@ -9,4 +9,14 @@
     <ProjectReference Include="..\Hmz.Game\Hmz.Game.csproj" />
   </ItemGroup>
 
+  <!-- Lets in-editor saves write straight back to the tracked assets folder instead of the
+       bin output copy - resolved once at build time, so it needs no runtime guessing about
+       Debug/Release or target framework output paths. Only valid for local source builds. -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>ContentSourceRoot</_Parameter1>
+      <_Parameter2>$(MSBuildProjectDirectory)\..\Hmz.Game\assets\</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
 </Project>
