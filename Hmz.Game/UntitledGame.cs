@@ -66,14 +66,25 @@ public class UntitledGame : Core.Hosting.Game
     Engine.Input.AddBinding("camera_right", Key.E);
     Engine.Input.AddBinding("camera_up", Key.R);
     Engine.Input.AddBinding("camera_down", Key.F);
+    Engine.Input.AddBinding("camera_left", GamepadButton.DPadLeft);
+    Engine.Input.AddBinding("camera_right", GamepadButton.DPadRight);
+    Engine.Input.AddBinding("camera_up", GamepadButton.DPadUp);
+    Engine.Input.AddBinding("camera_down", GamepadButton.DPadDown);
 
     Engine.Input.AddBinding("action_1", Key.Z);
     Engine.Input.AddBinding("action_2", Key.X);
     Engine.Input.AddBinding("action_3", Key.C);
 
+    Engine.Input.AddBinding("action_1", GamepadButton.A);
+    Engine.Input.AddBinding("action_2", GamepadButton.B);
+    Engine.Input.AddBinding("action_3", GamepadButton.Y);
+
     Engine.Input.AddBinding("pause", Key.Escape);
     Engine.Input.AddBinding("pause", Key.P);
     Engine.Input.AddBinding("confirm", Key.Enter);
+
+    Engine.Input.AddBinding("pause", GamepadButton.Start);
+    Engine.Input.AddBinding("confirm", GamepadButton.A);
   }
 
 }

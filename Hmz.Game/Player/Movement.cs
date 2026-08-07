@@ -1,11 +1,14 @@
 using System.Numerics;
 using Hmz.Core;
 using Hmz.Core.GOM;
+using Hmz.Core.Input;
 
 namespace Hmz.Game.Player;
 
 public class Movement(PlayerContext context) : Component
 {
+  const float StickDeadzone = 0.25f;
+
   public float Speed { get; set; } = 5f;
   public float RotationSpeed { get; set; } = 10f;
 
@@ -21,6 +24,17 @@ public class Movement(PlayerContext context) : Component
       if (Engine.Input.IsActionPressed("move_down")) direction.Z += 1f;
       if (Engine.Input.IsActionPressed("move_left")) direction.X -= 1f;
       if (Engine.Input.IsActionPressed("move_right")) direction.X += 1f;
+
+      float stickX = Engine.Input.GetGamepadAxis(GamepadAxis.LeftStickX);
+      float stickY = Engine.Input.GetGamepadAxis(GamepadAxis.LeftStickY);
+      if (MathF.Abs(stickX) > StickDeadzone)
+      {
+        direction.X += stickX;
+      }
+      if (MathF.Abs(stickY) > StickDeadzone)
+      {
+        direction.Z += stickY;
+      }
 
       if (direction != Vector3.Zero)
       {
