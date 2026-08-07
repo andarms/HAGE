@@ -92,6 +92,10 @@ public class GameObject
 
   public Collider? Collider { get; protected set; }
 
+  bool initialized;
+
+  protected bool IsInitialized => initialized;
+
   public GameObject()
   {
     Children = new ChildCollection(this);
@@ -102,6 +106,9 @@ public class GameObject
 
   public virtual void Initialize()
   {
+    if (initialized) return;
+    initialized = true;
+
     if (Collider != null) Engine.Collisions.Register(this);
 
     Components.Initialize();
@@ -166,5 +173,6 @@ public class GameObject
     Components.Terminate();
     Children.Clear();
     Parent = null;
+    initialized = false;
   }
 }

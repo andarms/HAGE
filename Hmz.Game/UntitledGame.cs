@@ -2,7 +2,6 @@ using Hmz.Core;
 using Hmz.Core.Hosting;
 using Hmz.Core.Input;
 using Hmz.Editor;
-using Hmz.Game.Tilemap;
 
 namespace Hmz.Game;
 
@@ -11,9 +10,10 @@ public class UntitledGame : Core.Hosting.Game
   protected override void LoadScenes()
   {
     MapActions();
-    Registries.RegisterAll();
+    RegisterGameObjectTypes();
     Engine.Scenes.Add(new GameplayScene());
     Engine.Scenes.Add(new EditorScene());
+    Engine.Scenes.Add(new TilemapEditorScene());
     Engine.Scenes.SetStartScene<GameplayScene>();
   }
 
@@ -31,7 +31,27 @@ public class UntitledGame : Core.Hosting.Game
       }
     }
 
+    if (Engine.Input.IsKeyJustPressed(Key.F3))
+    {
+      if (Engine.Scenes.Current is TilemapEditorScene)
+      {
+        Engine.Scenes.SwitchTo<GameplayScene>();
+      }
+      else if (Engine.Scenes.Current is GameplayScene)
+      {
+        Engine.Scenes.SwitchTo<TilemapEditorScene>();
+      }
+    }
+
     base.Update(dt);
+  }
+
+  void RegisterGameObjectTypes()
+  {
+    Engine.GameObjectRegistry.Tiles.Register("Wall", props => new Wall());
+
+    Engine.GameObjectRegistry.Objects.Register("Tree", props => new Tree());
+    Engine.GameObjectRegistry.Objects.Register("Crate", props => new Crate());
   }
 
   public void MapActions()

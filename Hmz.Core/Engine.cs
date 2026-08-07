@@ -5,6 +5,7 @@ using Hmz.Core.Hosting;
 using Hmz.Core.Input;
 using Hmz.Core.Renderer;
 using Hmz.Core.Scenes;
+using Hmz.Core.Tilemap;
 using Silk.NET.OpenGL;
 
 namespace Hmz.Core;
@@ -31,6 +32,7 @@ public static class Engine
   public static CollisionsManager Collisions { get; } = new();
   public static bool DebugMode { get; set; } = false;
   public static Camera3D MainCamera { get; set; } = new Camera3D();
+  public static GameObjectRegistry GameObjectRegistry { get; } = new();
 
   public static void Initialize()
   {
@@ -44,25 +46,22 @@ public static class Engine
     int steps = 0;
     while (accumulator >= FixedDeltaTime && steps < MaxFixedStepsPerUpdate)
     {
+      if (Input.IsKeyJustPressed(Key.F1))
+      {
+        DebugMode = !DebugMode;
+      }
+
       Scenes.Update(FixedDeltaTime);
       Collisions.UpdateCollisions();
+      Input.EndFrame();
       accumulator -= FixedDeltaTime;
       steps++;
     }
 
-    // A big stall (e.g. a debugger pause) would otherwise queue an ever-growing catch-up,
-    // stalling every future frame trying to run it off. Drop the rest instead.
     if (steps == MaxFixedStepsPerUpdate)
     {
       accumulator = 0f;
     }
-
-    if (Input.IsKeyJustPressed(Key.F1))
-    {
-      DebugMode = !DebugMode;
-    }
-
-    Input.EndFrame();
   }
 
   public static void Draw()

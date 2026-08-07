@@ -24,7 +24,9 @@ public class Tree : GameObject
 
   public override void Initialize()
   {
+    bool alreadyInitialized = IsInitialized;
     base.Initialize();
+    if (alreadyInitialized) return;
 
     Model model = Engine.Content.LoadModel("models/tree_1.gltf");
     ModelRenderer renderer = new(model);

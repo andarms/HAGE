@@ -6,7 +6,6 @@ using Hmz.Core.Renderer;
 using Hmz.Core.Renderer.Styles;
 using Hmz.Core.Scenes;
 using Hmz.Core.Tilemap;
-using Hmz.Game.Tilemap;
 
 namespace Hmz.Game;
 
@@ -41,7 +40,7 @@ public sealed class GameplayScene : Scene
     Crate trigger = new();
     Instances.Add(trigger);
 
-    TileMap map = Engine.Content.LoadTilemap("maps/level1.json", Registries.Tiles, Registries.Objects);
+    TileMap map = Engine.Content.LoadTilemap("maps/level1.json");
     map.Transform.Position = new Vector3(-22f, 0f, -22f);
     Instances.Add(map);
   }

@@ -29,7 +29,8 @@ public static class TileOccupancy
     }
   }
 
-  // Arbitrary choice; the editor must round the same way or the two disagree on occupied cells.
+  // This rounding rule is arbitrary. The editor must use the same rule.
+  // If not, the loader and the editor will not agree on the occupied cells.
   static int RoundHalfAwayFromZero(float value)
   {
     return (int)MathF.Round(value, MidpointRounding.AwayFromZero);

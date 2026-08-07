@@ -22,8 +22,6 @@ public class Wall : Tile3D
 
   public Wall()
   {
-    // The cube is 2 (X) x 1 (Z) world units, and 1 grid cell is placed per wall segment
-    // (matching cellSize to the cube's width) - not a 2x2-cell footprint.
     Size = TileSize.OneByOne;
     Collider = new(this)
     {
@@ -35,8 +33,9 @@ public class Wall : Tile3D
     };
   }
 
-  // Grid placement gives this tile's Y as the floor level (Section 2.3), but the cube mesh
-  // is centered on its origin, so it's drawn shifted up by the same offset as the collider.
+  // The grid sets this tile's Y position to the floor level.
+  // The cube mesh has its center at the origin.
+  // This draws the cube shifted up, to match the collider offset.
   public override void Draw()
   {
     Matrix4x4 pivotMatrix = Matrix4x4.CreateTranslation(0f, 1f, 0f) * WorldMatrix;

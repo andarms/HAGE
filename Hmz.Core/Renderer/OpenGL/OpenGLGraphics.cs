@@ -487,7 +487,7 @@ public sealed class OpenGLGraphics : IGraphics
     shader.SetBool("uUseVertexColor", false);
   }
 
-  public void DrawDebugGrid(int xRows, int zColumns, float cellSize)
+  public void DrawDebugGrid(int xRows, int zColumns, float cellSize, float y = 0f, float offsetX = 0f, float offsetZ = 0f)
   {
     float halfWidth = xRows * cellSize / 2f;
     float halfDepth = zColumns * cellSize / 2f;
@@ -512,7 +512,7 @@ public sealed class OpenGLGraphics : IGraphics
     Engine.GL.BindVertexArray(gridVao);
     Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, gridVbo);
     Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, vertices, BufferUsageARB.DynamicDraw);
-    shader.SetMatrix("uModel", Matrix4x4.Identity);
+    shader.SetMatrix("uModel", Matrix4x4.CreateTranslation(offsetX, y, offsetZ));
     shader.SetColor("uColor", Color.Gray);
     Engine.GL.LineWidth(1f);
     Engine.GL.DrawArrays(PrimitiveType.Lines, 0, (uint)(vertices.Length / 3));
