@@ -31,11 +31,13 @@ public class Player : GameObject
   {
     Model model = Engine.Content.LoadModel("models/player.gltf");
     ModelRenderer renderer = new(model);
+    CameraController cameraController = new(context);
     Movement movement = new(context);
     PlayerAnimator animator = new(context);
     StateMachine<PlayerContext> stateMachine = new(context);
 
     Components.Add(renderer);
+    Components.Add(cameraController);
     Components.Add(movement);
     Components.Add(animator);
     Components.Add(stateMachine);

@@ -7,4 +7,6 @@ public sealed class PlayerContext
   public bool IsMoving { get; set; }
 
   public string? AnimationName { get; set; }
+
+  public float CameraYaw { get; set; }
 }

@@ -11,9 +11,6 @@ namespace Hmz.Game;
 
 public sealed class GameplayScene : Scene
 {
-  static readonly Vector3 CameraOffset = new(0f, 8f, 10f);
-  const float CameraFollowSpeed = 4f;
-
   int displayMode;
   Player.Player player;
 
@@ -23,8 +20,6 @@ public sealed class GameplayScene : Scene
     Engine.MainCamera.AspectRatio = Engine.Viewport.AspectRatio;
     Engine.MainCamera.NearPlane = 0.1f;
     Engine.MainCamera.FarPlane = 1000f;
-    Engine.MainCamera.Position = CameraOffset;
-    Engine.MainCamera.Target = Vector3.Zero;
     Engine.MainCamera.Up = Vector3.UnitY;
     Engine.MainCamera.FieldOfView = MathF.PI / 4f;
 
@@ -48,8 +43,6 @@ public sealed class GameplayScene : Scene
   public override void Update(float dt)
   {
     base.Update(dt);
-
-    Engine.MainCamera.Follow(player.Transform.Position, CameraOffset, CameraFollowSpeed, dt);
 
     if (Engine.Input.IsActionJustPressed("pause") && Engine.Scenes.Current is not PauseScene)
     {

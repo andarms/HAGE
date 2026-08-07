@@ -62,6 +62,11 @@ public class UntitledGame : Core.Hosting.Game
     Engine.Input.AddBinding("move_left", Key.LeftArrow);
     Engine.Input.AddBinding("move_right", Key.RightArrow);
 
+    Engine.Input.AddBinding("camera_left", Key.Q);
+    Engine.Input.AddBinding("camera_right", Key.E);
+    Engine.Input.AddBinding("camera_up", Key.R);
+    Engine.Input.AddBinding("camera_down", Key.F);
+
     Engine.Input.AddBinding("action_1", Key.Z);
     Engine.Input.AddBinding("action_2", Key.X);
     Engine.Input.AddBinding("action_3", Key.C);

@@ -22,7 +22,11 @@ public class Movement(PlayerContext context) : Component
       if (Engine.Input.IsActionPressed("move_left")) direction.X -= 1f;
       if (Engine.Input.IsActionPressed("move_right")) direction.X += 1f;
 
-      if (direction != Vector3.Zero) direction = Vector3.Normalize(direction);
+      if (direction != Vector3.Zero)
+      {
+        direction = Vector3.Transform(direction, Quaternion.CreateFromYawPitchRoll(context.CameraYaw, 0f, 0f));
+        direction = Vector3.Normalize(direction);
+      }
     }
 
     context.IsMoving = direction != Vector3.Zero;
