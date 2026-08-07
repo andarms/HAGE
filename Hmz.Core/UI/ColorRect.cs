@@ -12,7 +12,7 @@ public class ColorRect : Container
     FillParent();
   }
 
-  protected override void DrawSelf()
+  protected override void OnDraw()
   {
     Engine.Graphics.DrawRectangle(Bounds, Style);
     FlushBackground();

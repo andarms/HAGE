@@ -14,7 +14,7 @@ public class Label : UIElement
     return DesiredSize;
   }
 
-  protected override void DrawSelf()
+  protected override void OnDraw()
   {
     Engine.Graphics.DrawText(Text, Bounds.X, Bounds.Y, Style);
   }

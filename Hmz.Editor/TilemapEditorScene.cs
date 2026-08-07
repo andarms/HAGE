@@ -62,9 +62,19 @@ public sealed class TilemapEditorScene : Scene
     }
   }
 
+  // Saves to the tracked source file, then copies it over the bin output copy too - so a
+  // save is visible immediately to anything in the current run that loads from bin
+  // (e.g. switching to GameplayScene), without waiting for the next build to re-copy it.
   void HandleSave()
   {
-    if (Engine.Input.IsKeyJustPressed(Key.S)) tilemap.Save(Engine.Content.ResolveSource(MapPath));
+    if (!Engine.Input.IsKeyJustPressed(Key.S))
+    {
+      return;
+    }
+
+    string sourcePath = Engine.Content.ResolveSource(MapPath);
+    tilemap.Save(sourcePath);
+    File.Copy(sourcePath, Engine.Content.Resolve(MapPath), overwrite: true);
   }
 
   void HandlePlacement()

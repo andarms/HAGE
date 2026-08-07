@@ -50,7 +50,7 @@ public class Button : UIElement
     }
   }
 
-  protected override void DrawSelf()
+  protected override void OnDraw()
   {
     RectangleStyle style = pressed ? PressedStyle : hovered ? HoverStyle : NormalStyle;
     Engine.Graphics.DrawRectangle(Bounds, style);
