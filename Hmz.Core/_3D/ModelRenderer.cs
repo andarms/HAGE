@@ -15,14 +15,32 @@ public class ModelRenderer(Model model) : Component
   Matrix4x4[] boneMatrices = [];
   public IReadOnlyList<Matrix4x4> BoneMatrices => boneMatrices;
 
+  public event Action<string>? AnimationFinished;
+
   string? currentAnimation;
   float animationTimeTicks;
+  bool looping = true;
+  bool finished;
 
-  public void Play(string animationName)
+  public void Play(string animationName, bool loop = true)
   {
-    if (currentAnimation == animationName || !Model.Animations.ContainsKey(animationName)) return;
+    if (currentAnimation == animationName && looping == loop) return;
+
+    if (!Model.Animations.ContainsKey(animationName))
+    {
+      // A missing clip must still report as finished. Otherwise a caller that waits
+      // for AnimationFinished, like a state machine, stalls forever.
+      if (!loop)
+      {
+        AnimationFinished?.Invoke(animationName);
+      }
+      return;
+    }
+
     currentAnimation = animationName;
     animationTimeTicks = 0f;
+    looping = loop;
+    finished = false;
   }
 
   public override void Update(float dt)
@@ -41,7 +59,16 @@ public class ModelRenderer(Model model) : Component
       animationTimeTicks += dt * clip.TicksPerSecond;
       if (clip.DurationTicks > 0)
       {
-        animationTimeTicks %= clip.DurationTicks;
+        if (looping)
+        {
+          animationTimeTicks %= clip.DurationTicks;
+        }
+        else if (!finished && animationTimeTicks >= clip.DurationTicks)
+        {
+          animationTimeTicks = clip.DurationTicks;
+          finished = true;
+          AnimationFinished?.Invoke(currentAnimation!);
+        }
       }
     }
 

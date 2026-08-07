@@ -7,11 +7,13 @@ public sealed class PlayerIdleState : State<PlayerContext>
 {
   public override IEnumerable<Transition<PlayerContext>> Transitions { get; } =
   [
+    new PlayerAttackRequested(),
     new PlayerStartedMoving(),
   ];
 
   public override void Enter(PlayerContext context)
   {
     context.AnimationName = "idle";
+    context.AnimationLoop = true;
   }
 }

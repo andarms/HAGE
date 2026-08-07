@@ -85,7 +85,10 @@ public class ComponentCollection(GameObject owner) : IReadOnlyComponentCollectio
   {
     foreach (Component component in components.Values)
     {
-      component.HandleInput();
+      if (component.Enabled)
+      {
+        component.HandleInput();
+      }
     }
   }
 
@@ -95,7 +98,10 @@ public class ComponentCollection(GameObject owner) : IReadOnlyComponentCollectio
     Flush();
     foreach (Component component in components.Values)
     {
-      component.Update(dt);
+      if (component.Enabled)
+      {
+        component.Update(dt);
+      }
     }
   }
 

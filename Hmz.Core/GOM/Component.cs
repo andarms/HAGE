@@ -5,6 +5,8 @@ public class Component
   GameObject? owner;
   protected GameObject Owner => owner ?? throw new InvalidOperationException("Component is not attached to a GameObject.");
 
+  public bool Enabled { get; set; } = true;
+
   public void Attach(GameObject owner)
   {
     ArgumentNullException.ThrowIfNull(owner);

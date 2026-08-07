@@ -36,6 +36,8 @@ public class Player : GameObject
     PlayerAnimator animator = new(context);
     StateMachine<PlayerContext> stateMachine = new(context);
 
+    context.Movement = movement;
+
     Components.Add(renderer);
     Components.Add(cameraController);
     Components.Add(movement);
@@ -45,6 +47,7 @@ public class Player : GameObject
 
     stateMachine.Register(new States.PlayerIdleState());
     stateMachine.Register(new States.PlayerWalkingState());
+    stateMachine.Register(new States.PlayerAttackState());
     stateMachine.Start<States.PlayerIdleState>();
 
     Children.Add(new PlayerInteraction());
@@ -53,6 +56,7 @@ public class Player : GameObject
   public override void HandleInput()
   {
     context.InputEnabled = InputEnabled;
+    context.AttackPressed = InputEnabled && Engine.Input.IsActionJustPressed("action_1");
 
     base.HandleInput();
   }

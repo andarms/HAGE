@@ -11,6 +11,7 @@ public sealed class PlayerAnimator(PlayerContext context) : Component
   public override void Initialize()
   {
     renderer = Owner.Components.Require<ModelRenderer>();
+    renderer.AnimationFinished += OnAnimationFinished;
   }
 
   public override void Update(float dt)
@@ -18,6 +19,15 @@ public sealed class PlayerAnimator(PlayerContext context) : Component
     if (context.AnimationName == current) return;
 
     current = context.AnimationName;
-    if (current != null) renderer.Play(current);
+    if (current != null)
+    {
+      context.AnimationFinished = false;
+      renderer.Play(current, context.AnimationLoop);
+    }
+  }
+
+  void OnAnimationFinished(string animationName)
+  {
+    context.AnimationFinished = true;
   }
 }
