@@ -59,6 +59,13 @@ sealed class FontRenderer : IFontStashRenderer2, ITexture2DManager, IDisposable
     defaultFont.Dispose();
   }
 
+  public Vector2 MeasureText(string text, TextStyle style)
+  {
+    FontSystem fontSystem = (style.Font ?? defaultFont).System;
+    DynamicSpriteFont font = fontSystem.GetFont(style.FontSize);
+    return font.MeasureString(text);
+  }
+
   public void DrawText(string text, float x, float y, TextStyle style, Matrix4x4 projection)
   {
     FontSystem fontSystem = (style.Font ?? defaultFont).System;

@@ -272,6 +272,8 @@ public sealed class OpenGLGraphics : IGraphics
     shader.SetMatrix("uProjection", projection);
     shader.SetMatrix("uView", camera.GetViewMatrix());
     Engine.GL.Disable(EnableCap.DepthTest);
+    Engine.GL.Enable(EnableCap.Blend);
+    Engine.GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
     Engine.GL.BindVertexArray(vao);
   }
 
@@ -281,6 +283,7 @@ public sealed class OpenGLGraphics : IGraphics
   {
     FlushFills2D();
     FlushStrokes2D();
+    Engine.GL.Disable(EnableCap.Blend);
   }
 
   public void DrawRectangle(float x, float y, float width, float height, RectangleStyle style)
@@ -833,6 +836,8 @@ public sealed class OpenGLGraphics : IGraphics
 
   public void DrawText(string text, float x, float y, TextStyle style) =>
     fontRenderer.DrawText(text, x, y, style, projection);
+
+  public Vector2 MeasureText(string text, TextStyle style) => fontRenderer.MeasureText(text, style);
 
   #endregion
 }

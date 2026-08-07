@@ -14,6 +14,7 @@ public class UntitledGame : Core.Hosting.Game
     Engine.Scenes.Add(new GameplayScene());
     Engine.Scenes.Add(new EditorScene());
     Engine.Scenes.Add(new TilemapEditorScene());
+    Engine.Scenes.Add(new PauseScene());
     Engine.Scenes.SetStartScene<GameplayScene>();
   }
 
@@ -66,6 +67,7 @@ public class UntitledGame : Core.Hosting.Game
     Engine.Input.AddBinding("action_3", Key.C);
 
     Engine.Input.AddBinding("pause", Key.Escape);
+    Engine.Input.AddBinding("pause", Key.P);
     Engine.Input.AddBinding("confirm", Key.Enter);
   }
 

@@ -1,4 +1,7 @@
+using Hmz.Core._2D;
 using Hmz.Core.GOM;
+using Hmz.Core.UI;
+using System.Numerics;
 
 namespace Hmz.Core.Scenes;
 
@@ -6,6 +9,7 @@ namespace Hmz.Core.Scenes;
 public class Scene
 {
   public GameObjectCollection Instances { get; } = [];
+  public CanvasLayer Canvas { get; } = [];
 
   // Whether this scene reads input when it's current or sitting on the stack;
   // set via SceneManager.Push's captureInput argument. Defaults to true so plain
@@ -18,10 +22,20 @@ public class Scene
     {
       instance.Initialize();
     }
+    foreach (GameObject instance in Canvas)
+    {
+      instance.Initialize();
+    }
   }
 
   internal void HandleInput()
   {
+    Engine.Input.ResetMouseCapture();
+
+    foreach (GameObject instance in Canvas)
+    {
+      instance.HandleInput();
+    }
     foreach (GameObject instance in Instances)
     {
       instance.HandleInput();
@@ -31,6 +45,18 @@ public class Scene
   public virtual void Update(float dt)
   {
     Instances.Update(dt, onAdded: i => i.Initialize(), onRemoved: i => i.Terminate());
+    UpdateCanvasLayout();
+    Canvas.Update(dt, onAdded: i => i.Initialize(), onRemoved: i => i.Terminate());
+  }
+
+  void UpdateCanvasLayout()
+  {
+    Vector2 viewport = new(Engine.Viewport.LogicalWidth, Engine.Viewport.LogicalHeight);
+    foreach (UIElement root in Canvas.OfType<UIElement>())
+    {
+      root.Measure(viewport);
+      root.Arrange(new Rectangle(0f, 0f, viewport.X, viewport.Y));
+    }
   }
 
   public virtual void Draw()
@@ -45,14 +71,16 @@ public class Scene
     }
   }
 
-  // public virtual void DrawUI()
-  // {
-  //   var instancesOrdered = instances.OrderBy(i => i.DrawOrder).ThenBy(i => i.Position.Y);
-  //   foreach (GameObject instance in instancesOrdered)
-  //   {
-  //     instance.DrawUI();
-  //   }
-  // }
+  public virtual void DrawCanvas()
+  {
+    Engine.Graphics.StartMode2D(UIElement.CanvasCamera);
+    var canvasOrdered = Canvas.OrderBy(i => i.DrawOrder);
+    foreach (GameObject instance in canvasOrdered)
+    {
+      instance.Draw();
+    }
+    Engine.Graphics.EndMode2D();
+  }
 
   public virtual void Pause() { }
 
@@ -65,6 +93,11 @@ public class Scene
       instance.Terminate();
     }
     Instances.Clear();
+    foreach (GameObject instance in Canvas)
+    {
+      instance.Terminate();
+    }
+    Canvas.Clear();
   }
 
   public virtual bool IsBusy() => false;

@@ -196,6 +196,18 @@ public class InputManager
   public Vector2 MouseDelta { get; private set; }
   public float MouseScrollDelta { get; private set; }
 
+  public bool MouseCapturedByCanvas { get; private set; }
+
+  public void CaptureMouse()
+  {
+    MouseCapturedByCanvas = true;
+  }
+
+  internal void ResetMouseCapture()
+  {
+    MouseCapturedByCanvas = false;
+  }
+
   public void Initialize(IInputContext inputContext)
   {
     if (initialized)

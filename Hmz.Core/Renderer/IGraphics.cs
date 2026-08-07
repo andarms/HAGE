@@ -49,5 +49,6 @@ public interface IGraphics : IDisposable
 
   #region Text Drawing
   void DrawText(string text, float x, float y, TextStyle style);
+  Vector2 MeasureText(string text, TextStyle style);
   #endregion
 }

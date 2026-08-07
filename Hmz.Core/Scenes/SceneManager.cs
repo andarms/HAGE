@@ -12,6 +12,7 @@ public class SceneManager
 
   Scene? nextScene = null;
   Scene? startScene = null;
+  bool popRequested = false;
 
   readonly Stack<Scene> sceneStack = new();
   readonly Dictionary<Type, Scene> scenes = new();
@@ -43,7 +44,19 @@ public class SceneManager
     GetInputScene()?.HandleInput();
     Current?.Update(dt);
 
-    if (nextScene != null && current != null && !current.IsBusy())
+    // Pop/SwitchTo requests are applied here, after HandleInput/Update have fully
+    // returned for every scene, rather than inside Pop()/SwitchTo() itself. A widget
+    // (e.g. a Button.Clicked handler) can call Pop() from deep inside its own scene's
+    // HandleInput() call stack; terminating that scene immediately would clear the
+    // GameObject/Canvas collections an ancestor frame is still mid-foreach over,
+    // throwing "Collection was modified". Deferring to this point guarantees no
+    // enumerator anywhere is still live when Terminate() runs.
+    if (popRequested)
+    {
+      popRequested = false;
+      ApplyPop();
+    }
+    else if (nextScene != null && current != null && !current.IsBusy())
     {
       current?.Terminate();
       current = nextScene;
@@ -61,14 +74,14 @@ public class SceneManager
     Current?.Draw();
   }
 
-  // public void DrawUI()
-  // {
-  //   foreach (var scene in sceneStack)
-  //   {
-  //     scene.DrawUI();
-  //   }
-  //   Current?.DrawUI();
-  // }
+  public void DrawCanvas()
+  {
+    foreach (var scene in sceneStack)
+    {
+      scene.DrawCanvas();
+    }
+    Current?.DrawCanvas();
+  }
 
   public void Pause()
   {
@@ -106,6 +119,11 @@ public class SceneManager
   }
 
   public void Pop()
+  {
+    popRequested = true;
+  }
+
+  void ApplyPop()
   {
     if (sceneStack.Count > 0)
     {

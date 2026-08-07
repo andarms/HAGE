@@ -67,6 +67,7 @@ public static class Engine
   public static void Draw()
   {
     Scenes.Draw();
+    Scenes.DrawCanvas();
   }
 
   public static void Terminate()

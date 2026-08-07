@@ -51,6 +51,11 @@ public sealed class GameplayScene : Scene
 
     Engine.MainCamera.Follow(player.Transform.Position, CameraOffset, CameraFollowSpeed, dt);
 
+    if (Engine.Input.IsActionJustPressed("pause") && Engine.Scenes.Current is not PauseScene)
+    {
+      Engine.Scenes.Push<PauseScene>();
+    }
+
     if (Engine.Input.IsKeyJustPressed(Hmz.Core.Input.Key.F4))
     {
       displayMode = (displayMode + 1) % 3;
