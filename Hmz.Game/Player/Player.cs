@@ -27,7 +27,7 @@ public class Player : GameObject
 
   }
 
-  public override void Initialize()
+  protected override void OnInitialize()
   {
     Model model = Engine.Content.LoadModel("models/player.gltf");
     ModelRenderer renderer = new(model);
@@ -43,8 +43,6 @@ public class Player : GameObject
     stateMachine.Register(new States.PlayerIdleState());
     stateMachine.Register(new States.PlayerWalkingState());
     stateMachine.Start<States.PlayerIdleState>();
-
-    base.Initialize();
 
     Children.Add(new PlayerInteraction());
   }

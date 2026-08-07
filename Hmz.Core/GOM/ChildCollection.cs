@@ -27,7 +27,6 @@ public sealed class ChildCollection(GameObject owner) : GameObjectCollection
     item.Parent?.Children.Remove(item);
     base.Add(item);
     item.Parent = owner;
-    item.Initialize();
   }
 
   public override void Remove(GameObject item)

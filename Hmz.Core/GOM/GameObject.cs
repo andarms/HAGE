@@ -104,13 +104,14 @@ public class GameObject
 
   public void RemoveFromParent() => Parent?.Children.Remove(this);
 
-  public virtual void Initialize()
+  public void Initialize()
   {
     if (initialized) return;
     initialized = true;
 
     if (Collider != null) Engine.Collisions.Register(this);
 
+    OnInitialize();
     Components.Initialize();
 
     foreach (GameObject child in Children)
@@ -118,6 +119,8 @@ public class GameObject
       child.Initialize();
     }
   }
+
+  protected virtual void OnInitialize() { }
 
   public virtual void HandleInput()
   {
