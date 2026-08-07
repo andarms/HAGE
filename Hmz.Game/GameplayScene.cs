@@ -25,15 +25,6 @@ public sealed class GameplayScene : Scene
 
     player = new Player.Player();
     Instances.Add(player);
-    Tree tree = new();
-    Instances.Add(tree);
-    Tree tree2 = new()
-    {
-      Transform = { Position = new Vector3(2f, 0f, 4f), Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitY, MathF.PI / 4f) },
-    };
-    Instances.Add(tree2);
-    Crate trigger = new();
-    Instances.Add(trigger);
 
     TileMap map = Engine.Content.LoadTilemap("maps/level1.json");
     map.Transform.Position = new Vector3(-22f, 0f, -22f);

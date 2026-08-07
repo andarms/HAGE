@@ -49,7 +49,15 @@ public class UntitledGame : Core.Hosting.Game
 
   void RegisterGameObjectTypes()
   {
-    Engine.GameObjectRegistry.Tiles.Register("Wall", props => new Wall());
+    Engine.GameObjectRegistry.Tiles.Register("Box1x1", props => new Box1x1());
+    Engine.GameObjectRegistry.Tiles.Register("Box1x2", props => new Box1x2());
+    Engine.GameObjectRegistry.Tiles.Register("Box1x3", props => new Box1x3());
+    Engine.GameObjectRegistry.Tiles.Register("Box2x1", props => new Box2x1());
+    Engine.GameObjectRegistry.Tiles.Register("Box2x2", props => new Box2x2());
+    Engine.GameObjectRegistry.Tiles.Register("Box2x3", props => new Box2x3());
+    Engine.GameObjectRegistry.Tiles.Register("Box3x1", props => new Box3x1());
+    Engine.GameObjectRegistry.Tiles.Register("Box3x2", props => new Box3x2());
+    Engine.GameObjectRegistry.Tiles.Register("Box3x3", props => new Box3x3());
 
     Engine.GameObjectRegistry.Objects.Register("Tree", props => new Tree());
     Engine.GameObjectRegistry.Objects.Register("Crate", props => new Crate());

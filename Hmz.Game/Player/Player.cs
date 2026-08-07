@@ -19,8 +19,8 @@ public class Player : GameObject
     Transform.Position = new Vector3(0f, 0f, 0f);
     Collider = new(this)
     {
-      Size = new Vector3(1f, 2f, 1f),
-      Offset = new Vector3(0f, 1f, 0f),
+      Size = new Vector3(1f, 1.2f, 1f),
+      Offset = new Vector3(0f, 0.6f, 0f),
       Layer = CollisionLayer.Player,
       Mask = CollisionLayer.All & ~CollisionLayer.Player,
     };
@@ -56,26 +56,4 @@ public class Player : GameObject
 
     base.HandleInput();
   }
-}
-
-
-public class PlayerInteraction : GameObject
-{
-  const float ForwardOffset = 1f;
-
-  public PlayerInteraction()
-  {
-    Transform.Position = Vector3.UnitZ * ForwardOffset;
-    Collider = new(this)
-    {
-      Type = CollisionType.Trigger,
-      Size = new Vector3(0.5f, 0.5f, 0.5f),
-      Offset = new Vector3(0f, 0.5f, 0f),
-      Layer = CollisionLayer.Player,
-      Mask = CollisionLayer.All & ~CollisionLayer.Player,
-      OnCollisionEnter = collision => Console.WriteLine($"[Trigger] {collision.Other.GetType().Name} entered"),
-      OnCollisionExit = collision => Console.WriteLine($"[Trigger] {collision.Other.GetType().Name} exited"),
-    };
-  }
-
 }
