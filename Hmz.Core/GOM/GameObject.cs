@@ -104,19 +104,24 @@ public class GameObject
 
   public void RemoveFromParent() => Parent?.Children.Remove(this);
 
-  public void Initialize()
+  public void Initialize() => Initialize(registerCollisions: true);
+
+  // registerCollisions: false initializes components/children (models, etc.) without
+  // entering the object into the live collision world - for preview/ghost instances that
+  // must render but never physically interact with anything.
+  public void Initialize(bool registerCollisions)
   {
     if (initialized) return;
     initialized = true;
 
-    if (Collider != null) Engine.Collisions.Register(this);
+    if (registerCollisions && Collider != null) Engine.Collisions.Register(this);
 
     OnInitialize();
     Components.Initialize();
 
     foreach (GameObject child in Children)
     {
-      child.Initialize();
+      child.Initialize(registerCollisions);
     }
   }
 

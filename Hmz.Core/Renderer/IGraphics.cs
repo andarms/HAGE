@@ -15,6 +15,7 @@ public interface IGraphics : IDisposable
 
   // GL draw calls in the last completed frame; resets on StartFrame.
   int DrawCallCount { get; }
+  Color Tint { get; set; }
 
   #region 2D Drawing
 
@@ -39,7 +40,7 @@ public interface IGraphics : IDisposable
 
   void DrawCube(Cube cube, CubeStyle style);
   void DrawCube(Cube cube, Matrix4x4 worldMatrix, CubeStyle style);
-  void DrawModel(Model model, Matrix4x4 worldMatrix, Matrix4x4[] boneMatrices);
+  void DrawModel(Model model, Matrix4x4 worldMatrix, Matrix4x4[] boneMatrices, Color color);
   void DrawDebugGrid(int xRows, int zColumns, float cellSize, float y = 0f, float offsetX = 0f, float offsetZ = 0f);
   void DrawSphere(Sphere sphere, SphereStyle style);
   #endregion

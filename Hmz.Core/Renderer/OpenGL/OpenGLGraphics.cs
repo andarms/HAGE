@@ -22,6 +22,8 @@ public sealed class OpenGLGraphics : IGraphics
   int drawCallCount;
   public int DrawCallCount => drawCallCount + fontRenderer.DrawCallCount;
 
+  public Color Tint { get; set; } = Color.White;
+
   // 2D fills and strokes queued between StartMode2D/EndMode2D, flushed as a batch.
   readonly List<float> pendingFillVertices = [];
   readonly Dictionary<float, List<float>> pendingLinesByWidth = [];
@@ -32,7 +34,8 @@ public sealed class OpenGLGraphics : IGraphics
   [StructLayout(LayoutKind.Sequential)]
   readonly record struct InstanceData(Matrix4x4 Model, Vector4 Color);
 
-  readonly List<InstanceData> pendingCubeFill = [];
+  readonly List<InstanceData> pendingOpaqueCubeFill = [];
+  readonly List<InstanceData> pendingTransparentCubeFill = [];
   readonly Dictionary<float, List<InstanceData>> pendingCubeWireframe = [];
   readonly Dictionary<float, List<InstanceData>> pendingCubeBorder = [];
 
@@ -41,7 +44,14 @@ public sealed class OpenGLGraphics : IGraphics
   readonly Dictionary<float, List<InstanceData>> pendingSphereBorder = [];
 
   // Non-skinned mesh draws queued between StartMode3D/EndMode3D, grouped by shared Mesh.
-  readonly Dictionary<Mesh, List<Matrix4x4>> pendingMeshInstances = [];
+  // Split by opacity so EndMode3D can flush all opaque content before any blended content.
+  readonly Dictionary<Mesh, List<InstanceData>> pendingOpaqueMeshInstances = [];
+  readonly Dictionary<Mesh, List<InstanceData>> pendingTransparentMeshInstances = [];
+
+  // Skinned meshes draw immediately rather than being instanced (bone matrices vary per
+  // instance), so transparent ones are queued here to still draw after all opaque content.
+  readonly record struct TransparentSkinnedDraw(Mesh Mesh, Matrix4x4 Model, Matrix4x4[] BoneMatrices, Vector4 Color);
+  readonly List<TransparentSkinnedDraw> pendingTransparentSkinned = [];
 
   Matrix4x4 projection;
 
@@ -411,8 +421,33 @@ public sealed class OpenGLGraphics : IGraphics
   {
     FlushCubes();
     FlushSpheres();
-    FlushMeshInstances();
+    FlushMeshInstances(pendingOpaqueMeshInstances);
+    FlushTransparent();
     Engine.GL.Disable(EnableCap.DepthTest);
+  }
+
+  // Blended content must draw after every opaque draw so opaque geometry still occludes it
+  // correctly; depth writes are off so overlapping transparent surfaces don't occlude each
+  // other purely by draw order (draws are not depth-sorted against one another).
+  void FlushTransparent()
+  {
+    if (pendingTransparentCubeFill.Count == 0 && pendingTransparentMeshInstances.Count == 0 && pendingTransparentSkinned.Count == 0) return;
+
+    Engine.GL.Enable(EnableCap.Blend);
+    Engine.GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+    Engine.GL.DepthMask(false);
+
+    FlushTransparentCubes();
+
+    FlushMeshInstances(pendingTransparentMeshInstances);
+    foreach (TransparentSkinnedDraw draw in pendingTransparentSkinned)
+    {
+      DrawSkinnedMesh(draw.Mesh, draw.Model, draw.BoneMatrices, draw.Color);
+    }
+    pendingTransparentSkinned.Clear();
+
+    Engine.GL.DepthMask(true);
+    Engine.GL.Disable(EnableCap.Blend);
   }
 
   public void DrawCube(Cube cube, CubeStyle style) => AddCubeInstance(cube.GetRenderMatrix(), style);
@@ -426,19 +461,23 @@ public sealed class OpenGLGraphics : IGraphics
   {
     if (style.Wireframe)
     {
-      GetInstanceGroup(pendingCubeWireframe, style.Width).Add(new InstanceData(model, ToVector4(style.Color)));
+      GetInstanceGroup(pendingCubeWireframe, style.Width).Add(new InstanceData(model, ApplyTint(style.Color)));
       return;
     }
 
-    pendingCubeFill.Add(new InstanceData(model, ToVector4(style.Color)));
+    Vector4 fillColor = ApplyTint(style.Color);
+    List<InstanceData> fillGroup = fillColor.W < 1f ? pendingTransparentCubeFill : pendingOpaqueCubeFill;
+    fillGroup.Add(new InstanceData(model, fillColor));
 
     if (style.Border != null)
     {
-      GetInstanceGroup(pendingCubeBorder, style.Border.Width).Add(new InstanceData(model, ToVector4(style.Border.Color)));
+      GetInstanceGroup(pendingCubeBorder, style.Border.Width).Add(new InstanceData(model, ApplyTint(style.Border.Color)));
     }
   }
 
   static Vector4 ToVector4(Color c) => new(c.R / 255f, c.G / 255f, c.B / 255f, c.A / 255f);
+
+  Vector4 ApplyTint(Color c) => ToVector4(c) * ToVector4(Tint);
 
   static List<InstanceData> GetInstanceGroup(Dictionary<float, List<InstanceData>> groups, float key)
   {
@@ -453,8 +492,8 @@ public sealed class OpenGLGraphics : IGraphics
   void FlushCubes()
   {
     Engine.GL.BindVertexArray(cubeVao);
-    DrawCubeInstances(pendingCubeFill, PrimitiveType.Triangles, null);
-    pendingCubeFill.Clear();
+    DrawCubeInstances(pendingOpaqueCubeFill, PrimitiveType.Triangles, null);
+    pendingOpaqueCubeFill.Clear();
 
     foreach ((float width, List<InstanceData> instances) in pendingCubeWireframe)
     {
@@ -467,6 +506,15 @@ public sealed class OpenGLGraphics : IGraphics
       DrawCubeInstances(instances, PrimitiveType.LineLoop, width);
     }
     pendingCubeBorder.Clear();
+  }
+
+  void FlushTransparentCubes()
+  {
+    if (pendingTransparentCubeFill.Count == 0) return;
+
+    Engine.GL.BindVertexArray(cubeVao);
+    DrawCubeInstances(pendingTransparentCubeFill, PrimitiveType.Triangles, null);
+    pendingTransparentCubeFill.Clear();
   }
 
   unsafe void DrawCubeInstances(List<InstanceData> instances, PrimitiveType primitiveType, float? lineWidth)
@@ -586,66 +634,81 @@ public sealed class OpenGLGraphics : IGraphics
   }
 
   // Skinned meshes draw immediately since bone matrices vary per instance. Non-skinned meshes
-  // are queued and instanced at EndMode3D.
-  public void DrawModel(Model model, Matrix4x4 worldMatrix, Matrix4x4[] boneMatrices)
+  // are queued and instanced at EndMode3D. color is a modulate/tint multiplied over the mesh's
+  // texture (or over flat white when untextured), further multiplied by the global Tint -
+  // the combined alpha controls transparency.
+  public void DrawModel(Model model, Matrix4x4 worldMatrix, Matrix4x4[] boneMatrices, Color color)
   {
+    Vector4 tintedColor = ApplyTint(color);
+    bool transparent = tintedColor.W < 1f;
+
     foreach (Mesh mesh in model.Meshes)
     {
       bool skinned = mesh.IsSkinned && boneMatrices.Length > 0;
+      Matrix4x4 meshWorld = mesh.NodeTransform * worldMatrix;
 
       if (!skinned)
       {
-        GetMeshGroup(mesh).Add(mesh.NodeTransform * worldMatrix);
+        Dictionary<Mesh, List<InstanceData>> group = transparent ? pendingTransparentMeshInstances : pendingOpaqueMeshInstances;
+        GetMeshGroup(group, mesh).Add(new InstanceData(meshWorld, tintedColor));
         continue;
       }
 
-      Engine.GL.BindVertexArray(mesh.Vao);
-      shader.SetMatrix("uModel", mesh.NodeTransform * worldMatrix);
-      shader.SetColor("uColor", Color.White);
-      shader.SetBool("uSkinned", true);
-      shader.SetMatrixArray("uBones", boneMatrices);
-
-      if (mesh.Texture != null)
+      if (transparent)
       {
-        Engine.GL.ActiveTexture(TextureUnit.Texture0);
-        Engine.GL.BindTexture(TextureTarget.Texture2D, mesh.Texture.Handle);
-        shader.SetInt("uTexture", 0);
-        shader.SetBool("uTextured", true);
+        pendingTransparentSkinned.Add(new TransparentSkinnedDraw(mesh, meshWorld, boneMatrices, tintedColor));
+        continue;
       }
 
-      unsafe
-      {
-        Engine.GL.DrawElements(PrimitiveType.Triangles, mesh.IndexCount, DrawElementsType.UnsignedInt, (void*)0);
-      }
-      CountDrawCall();
-
-      shader.SetBool("uTextured", false);
-      shader.SetBool("uSkinned", false);
+      DrawSkinnedMesh(mesh, meshWorld, boneMatrices, tintedColor);
     }
   }
 
-  List<Matrix4x4> GetMeshGroup(Mesh mesh)
+  unsafe void DrawSkinnedMesh(Mesh mesh, Matrix4x4 model, Matrix4x4[] boneMatrices, Vector4 color)
   {
-    if (!pendingMeshInstances.TryGetValue(mesh, out List<Matrix4x4>? group))
+    Engine.GL.BindVertexArray(mesh.Vao);
+    shader.SetMatrix("uModel", model);
+    shader.SetVector4("uColor", color);
+    shader.SetBool("uSkinned", true);
+    shader.SetMatrixArray("uBones", boneMatrices);
+
+    if (mesh.Texture != null)
     {
-      group = [];
-      pendingMeshInstances[mesh] = group;
+      Engine.GL.ActiveTexture(TextureUnit.Texture0);
+      Engine.GL.BindTexture(TextureTarget.Texture2D, mesh.Texture.Handle);
+      shader.SetInt("uTexture", 0);
+      shader.SetBool("uTextured", true);
     }
-    return group;
+
+    Engine.GL.DrawElements(PrimitiveType.Triangles, mesh.IndexCount, DrawElementsType.UnsignedInt, (void*)0);
+    CountDrawCall();
+
+    shader.SetBool("uTextured", false);
+    shader.SetBool("uSkinned", false);
   }
 
-  unsafe void FlushMeshInstances()
+  static List<InstanceData> GetMeshGroup(Dictionary<Mesh, List<InstanceData>> group, Mesh mesh)
   {
-    if (pendingMeshInstances.Count == 0) return;
+    if (!group.TryGetValue(mesh, out List<InstanceData>? instances))
+    {
+      instances = [];
+      group[mesh] = instances;
+    }
+    return instances;
+  }
 
-    shader.SetColor("uColor", Color.White);
+  unsafe void FlushMeshInstances(Dictionary<Mesh, List<InstanceData>> pending)
+  {
+    if (pending.Count == 0) return;
+
+    shader.SetBool("uUseVertexColor", true);
     shader.SetBool("uInstancedTransform", true);
 
-    foreach ((Mesh mesh, List<Matrix4x4> transforms) in pendingMeshInstances)
+    foreach ((Mesh mesh, List<InstanceData> instances) in pending)
     {
       Engine.GL.BindVertexArray(mesh.Vao);
       Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, mesh.InstanceVbo);
-      Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, MemoryMarshal.Cast<Matrix4x4, float>(CollectionsMarshal.AsSpan(transforms)), BufferUsageARB.DynamicDraw);
+      Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, MemoryMarshal.Cast<InstanceData, float>(CollectionsMarshal.AsSpan(instances)), BufferUsageARB.DynamicDraw);
 
       if (mesh.Texture != null)
       {
@@ -655,14 +718,15 @@ public sealed class OpenGLGraphics : IGraphics
         shader.SetBool("uTextured", true);
       }
 
-      Engine.GL.DrawElementsInstanced(PrimitiveType.Triangles, mesh.IndexCount, DrawElementsType.UnsignedInt, (void*)0, (uint)transforms.Count);
+      Engine.GL.DrawElementsInstanced(PrimitiveType.Triangles, mesh.IndexCount, DrawElementsType.UnsignedInt, (void*)0, (uint)instances.Count);
       CountDrawCall();
 
       shader.SetBool("uTextured", false);
     }
 
     shader.SetBool("uInstancedTransform", false);
-    pendingMeshInstances.Clear();
+    shader.SetBool("uUseVertexColor", false);
+    pending.Clear();
   }
 
   #endregion

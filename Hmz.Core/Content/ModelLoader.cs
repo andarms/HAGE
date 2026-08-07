@@ -178,18 +178,24 @@ static class ModelLoader
     Engine.GL.EnableVertexAttribArray(2);
     Engine.GL.EnableVertexAttribArray(3);
 
-    // Per-instance model matrix for GPU-instanced draws of repeated non-skinned meshes.
+    // Per-instance model matrix + tint color for GPU-instanced draws of repeated non-skinned meshes.
     uint instanceVbo = Engine.GL.GenBuffer();
     Engine.GL.BindBuffer(BufferTargetARB.ArrayBuffer, instanceVbo);
-    Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, new float[16], BufferUsageARB.DynamicDraw);
+    Engine.GL.BufferData(BufferTargetARB.ArrayBuffer, new float[20], BufferUsageARB.DynamicDraw);
     unsafe
     {
+      const uint instanceStride = 20 * sizeof(float);
+
       for (uint row = 0; row < 4; row++)
       {
-        Engine.GL.VertexAttribPointer(4 + row, 4, VertexAttribPointerType.Float, false, 16 * sizeof(float), (void*)(row * 4 * sizeof(float)));
+        Engine.GL.VertexAttribPointer(4 + row, 4, VertexAttribPointerType.Float, false, instanceStride, (void*)(row * 4 * sizeof(float)));
         Engine.GL.EnableVertexAttribArray(4 + row);
         Engine.GL.VertexAttribDivisor(4 + row, 1);
       }
+
+      Engine.GL.VertexAttribPointer(8, 4, VertexAttribPointerType.Float, false, instanceStride, (void*)(16 * sizeof(float)));
+      Engine.GL.EnableVertexAttribArray(8);
+      Engine.GL.VertexAttribDivisor(8, 1);
     }
 
     return new EngineMesh

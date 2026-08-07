@@ -4,10 +4,13 @@ using System.Numerics;
 using Hmz.Core;
 using Hmz.Core._3D.Geometry;
 using Hmz.Core.GOM;
+using Hmz.Core.Renderer;
 
 public class ModelRenderer(Model model) : Component
 {
   public Model Model { get; } = model;
+
+  public Color Color { get; set; } = Color.White;
 
   Matrix4x4[] boneMatrices = [];
   public IReadOnlyList<Matrix4x4> BoneMatrices => boneMatrices;
@@ -47,7 +50,7 @@ public class ModelRenderer(Model model) : Component
 
   public override void Draw()
   {
-    Engine.Graphics.DrawModel(Model, Owner.WorldMatrix, boneMatrices);
+    Engine.Graphics.DrawModel(Model, Owner.WorldMatrix, boneMatrices, Color);
   }
 
   void ApplyPose(SkeletonNode node, Matrix4x4 parentGlobal, AnimationClip? clip)

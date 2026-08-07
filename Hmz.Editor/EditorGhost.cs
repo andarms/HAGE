@@ -20,6 +20,7 @@ public sealed class EditorGhost
   const float MoveRepeatInterval = 0.12f;
   const float ObjectMoveStep = 1f;
   const float ObjectMoveStepFine = 0.1f;
+  const byte GhostAlpha = 140;
 
   public EditorMode Mode { get; private set; } = EditorMode.Tile;
   public int CurrentLayer { get; set; }
@@ -140,6 +141,7 @@ public sealed class EditorGhost
     if (SelectedTileKey is not { } key) return;
 
     Tile3D ghost = Engine.GameObjectRegistry.Tiles.Create(key, null);
+
     List<(int X, int Z)> cells = [.. TileOccupancy.GetOccupiedCells(ghost.Size, CellX(grid), CellZ(grid), RotationStep)];
     if (cells.Count == 0) return;
 
@@ -147,17 +149,22 @@ public sealed class EditorGhost
     int maxX = cells.Max(c => c.X);
     int minZ = cells.Min(c => c.Z);
     int maxZ = cells.Max(c => c.Z);
-
     float width = (maxX - minX + 1) * grid.CellSize;
     float depth = (maxZ - minZ + 1) * grid.CellSize;
     float height = grid.LayerHeight;
-    float centerX = (minX + (maxX - minX + 1) / 2f) * grid.CellSize;
-    float centerZ = (minZ + (maxZ - minZ + 1) / 2f) * grid.CellSize;
-    float y = CurrentLayer * grid.LayerHeight + height / 2f;
 
-    Cube cube = new() { Size = new Vector3(width, height, depth) };
-    Matrix4x4 worldMatrix = Matrix4x4.CreateTranslation(centerX, y, centerZ);
-    Engine.Graphics.DrawCube(cube, worldMatrix, new CubeStyle { Wireframe = true, Color = Color.Cyan });
+    (float centerX, float centerZ) = TileOccupancy.GetCenter(ghost.Size, CellX(grid), CellZ(grid));
+    float worldX = centerX * grid.CellSize;
+    float worldZ = centerZ * grid.CellSize;
+    float baseY = CurrentLayer * grid.LayerHeight;
+
+    Cube boundsCube = new() { Size = new Vector3(width, height, depth) };
+    Matrix4x4 boundsMatrix = Matrix4x4.CreateTranslation(worldX, baseY + height / 2f, worldZ);
+    Engine.Graphics.DrawCube(boundsCube, boundsMatrix, new CubeStyle { Wireframe = true, Color = Color.Cyan });
+
+    ghost.Transform.Position = new Vector3(worldX, baseY, worldZ);
+    ghost.RotateTile(RotationStep * MathF.PI / 2f);
+    DrawGhost(ghost);
   }
 
   void DrawObjectPreview(TilemapGrid grid)
@@ -165,11 +172,30 @@ public sealed class EditorGhost
     if (SelectedObjectKey is not { } key) return;
 
     GameObject ghost = Engine.GameObjectRegistry.Objects.Create(key, null);
+    Vector3 position = WorldPosition(grid);
     Vector3 size = ghost.Collider?.Size ?? Vector3.One;
     Vector3 offset = ghost.Collider?.Offset ?? Vector3.Zero;
 
-    Cube cube = new() { Size = size };
-    Matrix4x4 worldMatrix = Matrix4x4.CreateTranslation(WorldPosition(grid) + offset);
-    Engine.Graphics.DrawCube(cube, worldMatrix, new CubeStyle { Wireframe = true, Color = Color.Cyan });
+    Cube boundsCube = new() { Size = size };
+    Matrix4x4 boundsMatrix = Matrix4x4.CreateTranslation(position + offset);
+    Engine.Graphics.DrawCube(boundsCube, boundsMatrix, new CubeStyle { Wireframe = true, Color = Color.Cyan });
+
+    ghost.Transform.Position = position;
+    DrawGhost(ghost);
+  }
+
+  // Renders the real tile/object instance alongside its bounding-box wireframe, so the
+  // preview shows both the placement footprint and the actual shape being placed -
+  // translucent so it never fully hides what's beneath it, and initialized without
+  // registering a collider so it never physically interacts with anything (it's a preview,
+  // not a placed instance).
+  static void DrawGhost(GameObject ghost)
+  {
+    ghost.Initialize(registerCollisions: false);
+
+    Color previousTint = Engine.Graphics.Tint;
+    Engine.Graphics.Tint = new Color(255, 255, 255, GhostAlpha);
+    ghost.Draw();
+    Engine.Graphics.Tint = previousTint;
   }
 }

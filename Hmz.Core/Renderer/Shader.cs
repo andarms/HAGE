@@ -56,10 +56,12 @@ public sealed class Shader : IDisposable
     }
   }
 
-  public void SetColor(string name, Color c)
+  public void SetColor(string name, Color c) =>
+    SetVector4(name, new Vector4(c.R / 255f, c.G / 255f, c.B / 255f, c.A / 255f));
+
+  public void SetVector4(string name, Vector4 v)
   {
-    Vector4 color = new(c.R / 255f, c.G / 255f, c.B / 255f, c.A / 255f);
-    Engine.GL.Uniform4(Engine.GL.GetUniformLocation(Handle, name), color);
+    Engine.GL.Uniform4(Engine.GL.GetUniformLocation(Handle, name), v);
   }
 
   public void SetInt(string name, int value)
