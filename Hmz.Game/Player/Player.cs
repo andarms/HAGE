@@ -4,6 +4,7 @@ using Hmz.Core._3D;
 using Hmz.Core._3D.Geometry;
 using Hmz.Core.Collisions;
 using Hmz.Core.GOM;
+using Hmz.Core.Renderer;
 using Hmz.Core.States;
 
 namespace Hmz.Game.Player;
@@ -16,7 +17,7 @@ public class Player : GameObject
 
   public Player()
   {
-    Transform.Position = new Vector3(0f, 0f, 0f);
+    Transform.Position = new Vector3(0f, 2.5f, 0f);
     Collider = new(this)
     {
       Size = new Vector3(1f, 1.2f, 1f),
@@ -59,5 +60,11 @@ public class Player : GameObject
     context.AttackPressed = InputEnabled && Engine.Input.IsActionJustPressed("action_1");
 
     base.HandleInput();
+  }
+
+  public override void Debug()
+  {
+    base.Debug();
+    Console.WriteLine($"Player Position: {Transform.Position}");
   }
 }

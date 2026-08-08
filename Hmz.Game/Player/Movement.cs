@@ -11,8 +11,11 @@ public class Movement(PlayerContext context) : Component
 
   public float Speed { get; set; } = 5f;
   public float RotationSpeed { get; set; } = 10f;
+  public float GravityAcceleration { get; set; } = 50f;
+  public float MaxFallSpeed { get; set; } = 100f;
 
   Vector3 direction = Vector3.Zero;
+  float fallSpeed = 0f;
 
   public override void HandleInput()
   {
@@ -49,6 +52,7 @@ public class Movement(PlayerContext context) : Component
   public override void Update(float dt)
   {
     Move(dt);
+    Fall(dt);
   }
 
   void Move(float dt)
@@ -63,5 +67,17 @@ public class Movement(PlayerContext context) : Component
 
     Vector3 targetPosition = Owner.Transform.Position + currentDirection * Speed * dt;
     Owner.Transform.Position = Engine.Collisions.MoveAndCollide(Owner, targetPosition);
+  }
+
+  void Fall(float dt)
+  {
+    if (Engine.Collisions.IsGrounded(Owner))
+    {
+      fallSpeed = 0f;
+      return;
+    }
+
+    fallSpeed = MathF.Min(fallSpeed + GravityAcceleration * dt, MaxFallSpeed);
+    Owner.Transform.Position = Engine.Collisions.ApplyGravity(Owner, fallSpeed * dt);
   }
 }

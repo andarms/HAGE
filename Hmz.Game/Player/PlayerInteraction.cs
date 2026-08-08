@@ -18,8 +18,6 @@ public class PlayerInteraction : GameObject
       Offset = new Vector3(0f, 0.5f, 0f),
       Layer = CollisionLayer.Player,
       Mask = CollisionLayer.All & ~CollisionLayer.Player,
-      OnCollisionEnter = collision => Console.WriteLine($"[Trigger] {collision.Other.GetType().Name} entered"),
-      OnCollisionExit = collision => Console.WriteLine($"[Trigger] {collision.Other.GetType().Name} exited"),
     };
   }
 }

@@ -6,8 +6,6 @@ namespace Hmz.Core.Collisions;
 public class CollisionsManager
 {
   const float SkinWidth = 0.001f;
-
-  // Matches the smallest TileSize (1x1), so bigger tiles just span more cells.
   const float CellSize = 1f;
 
   readonly List<GameObject> collisionObjects = [];
@@ -23,6 +21,7 @@ public class CollisionsManager
 
   readonly HashSet<GameObject> resolveCandidates = [];
   readonly HashSet<GameObject> pairCandidates = [];
+  readonly HashSet<GameObject> groundCandidates = [];
 
   public void Register(GameObject obj)
   {
@@ -122,6 +121,88 @@ public class CollisionsManager
     return resolvedPosition;
   }
 
+  public Vector3 ApplyGravity(GameObject gameObject, float amount)
+  {
+    var collider = gameObject.Collider;
+
+    if (collider?.IsActive != true)
+    {
+      return gameObject.Transform.Position;
+    }
+
+    var position = gameObject.Transform.Position;
+
+    if (IsGrounded(gameObject, collider, position))
+    {
+      return position;
+    }
+
+    var bottom = MathF.Max(collider.Bounds(position).Min.Y, 0f);
+    var fallDistance = -MathF.Min(amount, bottom);
+
+    if (fallDistance == 0f)
+    {
+      return position;
+    }
+
+    var resolvedPosition = ResolveAxis(gameObject, collider, position, fallDistance, Axis.Y);
+
+    grid.Move(gameObject, collider.Bounds(resolvedPosition));
+
+    return resolvedPosition;
+  }
+
+  public bool IsGrounded(GameObject gameObject)
+  {
+    var collider = gameObject.Collider;
+
+    if (collider?.IsActive != true)
+    {
+      return false;
+    }
+
+    return IsGrounded(gameObject, collider, gameObject.Transform.Position);
+  }
+
+  bool IsGrounded(GameObject source, Collider sourceCollider, Vector3 position)
+  {
+    var bounds = sourceCollider.Bounds(position);
+    var probe = new CollisionBox(
+      new Vector3(bounds.Min.X, bounds.Min.Y - SkinWidth, bounds.Min.Z),
+      new Vector3(bounds.Max.X, bounds.Min.Y, bounds.Max.Z)
+    );
+
+    groundCandidates.Clear();
+    grid.Query(probe, groundCandidates);
+
+    foreach (var other in groundCandidates)
+    {
+      if (ReferenceEquals(other, source) || !other.IsActive)
+      {
+        continue;
+      }
+
+      var otherCollider = other.Collider;
+
+      if (otherCollider?.IsActive != true || otherCollider.Type != CollisionType.Solid)
+      {
+        continue;
+      }
+
+      if (!CanPair(sourceCollider, otherCollider))
+      {
+        continue;
+      }
+
+      if (probe.Intersects(otherCollider.Bounds(other.GlobalPosition)))
+      {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   Vector3 ResolveAxis(GameObject source, Collider sourceCollider, Vector3 position, float movement, Axis axis)
   {
     if (movement == 0)
@@ -131,6 +212,7 @@ public class CollisionsManager
 
     var moved = SetAxis(position, axis, GetAxis(position, axis) + movement);
     var bounds = sourceCollider.Bounds(moved);
+    var sourceFeetY = sourceCollider.Bounds(position).Min.Y;
 
     resolveCandidates.Clear();
     grid.Query(bounds, resolveCandidates);
@@ -157,6 +239,11 @@ public class CollisionsManager
       var otherBounds = otherCollider.Bounds(other.GlobalPosition);
 
       if (!bounds.Intersects(otherBounds))
+      {
+        continue;
+      }
+
+      if (axis != Axis.Y && otherBounds.Min.Y > sourceFeetY + SkinWidth)
       {
         continue;
       }
