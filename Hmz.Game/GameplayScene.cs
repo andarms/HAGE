@@ -29,6 +29,10 @@ public sealed class GameplayScene : Scene
     TileMap map = Engine.Content.LoadTilemap("maps/level1.json");
     map.Transform.Position = new Vector3(-22f, 0f, -22f);
     Instances.Add(map);
+
+    Slope slope = new(TileSize.OneByOne, riseHeight: 2f);
+    slope.Transform.Position = new Vector3(14f, 0f, 14f);
+    Instances.Add(slope);
   }
 
   public override void Update(float dt)

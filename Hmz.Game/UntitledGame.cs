@@ -1,6 +1,7 @@
 using Hmz.Core;
 using Hmz.Core.Hosting;
 using Hmz.Core.Input;
+using Hmz.Core.Tilemap;
 using Hmz.Editor;
 
 namespace Hmz.Game;
@@ -58,6 +59,7 @@ public class UntitledGame : Core.Hosting.Game
     Engine.GameObjectRegistry.Tiles.Register("Box3x1", props => new Box3x1());
     Engine.GameObjectRegistry.Tiles.Register("Box3x2", props => new Box3x2());
     Engine.GameObjectRegistry.Tiles.Register("Box3x3", props => new Box3x3());
+    Engine.GameObjectRegistry.Tiles.Register("Slope", props => new Slope(TileSize.OneByOne, riseHeight: 2f));
 
     Engine.GameObjectRegistry.Objects.Register("Tree", props => new Tree());
     Engine.GameObjectRegistry.Objects.Register("Crate", props => new Crate());

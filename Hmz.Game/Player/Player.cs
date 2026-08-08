@@ -20,7 +20,7 @@ public class Player : GameObject
     Transform.Position = new Vector3(0f, 2.5f, 0f);
     Collider = new(this)
     {
-      Size = new Vector3(1f, 1.2f, 1f),
+      Size = new Vector3(0.6f, 1.2f, 0.6f),
       Offset = new Vector3(0f, 0.6f, 0f),
       Layer = CollisionLayer.Player,
       Mask = CollisionLayer.All & ~CollisionLayer.Player,

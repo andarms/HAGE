@@ -24,6 +24,10 @@ public class Collider(GameObject owner)
 
   public CollisionLayer Mask { get; set; } = CollisionLayer.All;
 
+  // Set by ground providers (slopes, ramps) so CollisionsManager.GetGroundHeight can ask
+  // "what floor height applies at this XZ position" instead of only supporting flat tops.
+  public Func<Vector3, float>? GroundHeight { get; set; }
+
   public virtual CollisionBox Bounds(Vector3 position)
   {
     Vector3 center = position + Offset;

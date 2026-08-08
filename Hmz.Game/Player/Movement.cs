@@ -71,6 +71,13 @@ public class Movement(PlayerContext context) : Component
 
   void Fall(float dt)
   {
+    if (IsOnSlope())
+    {
+      Owner.Transform.Position = Engine.Collisions.SnapToGround(Owner);
+      fallSpeed = 0f;
+      return;
+    }
+
     if (Engine.Collisions.IsGrounded(Owner))
     {
       fallSpeed = 0f;
@@ -79,5 +86,18 @@ public class Movement(PlayerContext context) : Component
 
     fallSpeed = MathF.Min(fallSpeed + GravityAcceleration * dt, MaxFallSpeed);
     Owner.Transform.Position = Engine.Collisions.ApplyGravity(Owner, fallSpeed * dt);
+  }
+
+  bool IsOnSlope()
+  {
+    float? groundHeight = Engine.Collisions.GetGroundHeight(Owner);
+
+    if (groundHeight == null)
+    {
+      return false;
+    }
+
+    float heightDifference = MathF.Abs(Owner.Transform.Position.Y - groundHeight.Value);
+    return heightDifference <= Engine.Collisions.StepHeight;
   }
 }

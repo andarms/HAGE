@@ -8,6 +8,8 @@ public class CollisionsManager
   const float SkinWidth = 0.001f;
   const float CellSize = 1f;
 
+  public float StepHeight { get; set; } = 0.5f;
+
   readonly List<GameObject> collisionObjects = [];
   readonly HashSet<GameObject> registered = [];
   readonly Dictionary<GameObject, HashSet<GameObject>> previousColliding = [];
@@ -112,9 +114,9 @@ public class CollisionsManager
     var resolvedPosition = gameObject.Transform.Position;
     var movement = targetPosition - resolvedPosition;
 
-    resolvedPosition = ResolveAxis(gameObject, collider, resolvedPosition, movement.X, Axis.X);
-    resolvedPosition = ResolveAxis(gameObject, collider, resolvedPosition, movement.Z, Axis.Z);
-    resolvedPosition = ResolveAxis(gameObject, collider, resolvedPosition, movement.Y, Axis.Y);
+    resolvedPosition = ResolveAxis(gameObject, collider, resolvedPosition, movement.X, Axis.X, StepHeight);
+    resolvedPosition = ResolveAxis(gameObject, collider, resolvedPosition, movement.Z, Axis.Z, StepHeight);
+    resolvedPosition = ResolveAxis(gameObject, collider, resolvedPosition, movement.Y, Axis.Y, 0f);
 
     grid.Move(gameObject, collider.Bounds(resolvedPosition));
 
@@ -145,7 +147,7 @@ public class CollisionsManager
       return position;
     }
 
-    var resolvedPosition = ResolveAxis(gameObject, collider, position, fallDistance, Axis.Y);
+    var resolvedPosition = ResolveAxis(gameObject, collider, position, fallDistance, Axis.Y, 0f);
 
     grid.Move(gameObject, collider.Bounds(resolvedPosition));
 
@@ -203,7 +205,91 @@ public class CollisionsManager
     return false;
   }
 
-  Vector3 ResolveAxis(GameObject source, Collider sourceCollider, Vector3 position, float movement, Axis axis)
+  public float? GetGroundHeight(GameObject gameObject)
+  {
+    var collider = gameObject.Collider;
+
+    if (collider?.IsActive != true)
+    {
+      return null;
+    }
+
+    var position = gameObject.Transform.Position;
+    var bounds = collider.Bounds(position);
+
+    groundCandidates.Clear();
+    grid.Query(bounds, groundCandidates);
+
+    float? highest = null;
+
+    foreach (var other in groundCandidates)
+    {
+      if (ReferenceEquals(other, gameObject) || !other.IsActive)
+      {
+        continue;
+      }
+
+      var otherCollider = other.Collider;
+
+      if (otherCollider?.IsActive != true || otherCollider.GroundHeight is not { } groundHeight)
+      {
+        continue;
+      }
+
+      if (!CanPair(collider, otherCollider))
+      {
+        continue;
+      }
+
+      if (!OverlapsXZ(bounds, otherCollider.Bounds(other.GlobalPosition)))
+      {
+        continue;
+      }
+
+      var height = groundHeight(position);
+
+      if (highest is not { } current || height > current)
+      {
+        highest = height;
+      }
+    }
+
+    return highest;
+  }
+
+  public Vector3 SnapToGround(GameObject gameObject)
+  {
+    var collider = gameObject.Collider;
+    var position = gameObject.Transform.Position;
+
+    if (collider?.IsActive != true)
+    {
+      return position;
+    }
+
+    if (GetGroundHeight(gameObject) is not { } groundHeight)
+    {
+      return position;
+    }
+
+    if (MathF.Abs(position.Y - groundHeight) > StepHeight)
+    {
+      return position;
+    }
+
+    Vector3 snapped = new(position.X, groundHeight, position.Z);
+    grid.Move(gameObject, collider.Bounds(snapped));
+
+    return snapped;
+  }
+
+  static bool OverlapsXZ(CollisionBox a, CollisionBox b)
+  {
+    return a.Min.X <= b.Max.X && a.Max.X >= b.Min.X &&
+      a.Min.Z <= b.Max.Z && a.Max.Z >= b.Min.Z;
+  }
+
+  Vector3 ResolveAxis(GameObject source, Collider sourceCollider, Vector3 position, float movement, Axis axis, float stepHeight)
   {
     if (movement == 0)
     {
@@ -245,6 +331,13 @@ public class CollisionsManager
 
       if (axis != Axis.Y && otherBounds.Min.Y > sourceFeetY + SkinWidth)
       {
+        continue;
+      }
+
+      if (axis != Axis.Y && stepHeight > 0f && otherBounds.Max.Y - sourceFeetY <= stepHeight)
+      {
+        moved = SetAxis(moved, Axis.Y, otherBounds.Max.Y);
+        bounds = sourceCollider.Bounds(moved);
         continue;
       }
 
